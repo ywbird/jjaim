@@ -715,7 +715,7 @@ function renderDetail() {
         <label class="field-label" for="description-input">설명 (description)</label>
         <textarea id="description-input" class="description-input" rows="3"
           data-field="description" data-edit-key="description"
-          placeholder="이 그룹의 사람이 읽는 설명">${esc(group.description ?? "")}</textarea>
+          placeholder="(no description)">${esc(group.description ?? "")}</textarea>
         <p class="field-hint">비어 있으면 목록과 자식 패널에 ${esc("(no description)")}으로 표시됩니다.</p>
         ${textureEditor(group)}
       </div>
