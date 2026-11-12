@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Declarative Font Editor</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <h1>Declarative Font Editor</h1>
+        <span class="draft">v0.1</span>
+      </div>
+      <div class="toolbar">
+        <button id="load-example" type="button">예제 열기</button>
+        <label class="file-button">
+          JSON 열기
+          <input id="open-json" type="file" accept=".json,application/json" />
+        </label>
+        <label class="file-button">
+          텍스처 열기
+          <input id="open-textures" type="file" accept="image/png" multiple />
+        </label>
+        <button id="export-json" type="button">내보내기</button>
+        <span class="toolbar-divider" aria-hidden="true"></span>
+        <button id="undo" type="button" title="실행 취소 (Ctrl+Z)" disabled>↶ 실행 취소</button>
+        <button id="redo" type="button" title="다시 실행 (Ctrl+Shift+Z)" disabled>↷ 다시 실행</button>
+      </div>
+    </header>
+
+    <div id="status" class="status" role="status" hidden></div>
+
+    <main class="layout">
+      <aside class="sidebar" aria-label="프로젝트와 그룹">
+        <div class="sidebar-heading">프로젝트</div>
+        <input
+          id="search"
+          class="search"
+          type="search"
+          placeholder="그룹, U+AC00, 가, 이름[3]"
+          autocomplete="off"
+          aria-label="그룹, 코드 포인트, 글리프 검색"
+        />
+        <div id="search-results" class="search-results" hidden></div>
+        <div id="group-list" class="group-list"></div>
+        <div id="texture-status" class="sidebar-note"></div>
+      </aside>
+
+      <section class="workspace">
+        <div id="empty-state" class="empty-state">
+          <h2>정의를 불러오세요</h2>
+          <p>
+            <strong>예제 열기</strong>를 누르면
+            <code>examples/hangul.json</code>을 읽습니다. 로컬 파일은
+            <strong>JSON 열기</strong>와 <strong>텍스처 열기</strong>로 불러옵니다.
+          </p>
+          <p class="muted">
+            이 페이지는 서버 없이 동작하며, 변경 사항은 내보내기 전까지 브라우저
+            메모리에만 있습니다.
+          </p>
+        </div>
+        <div id="editor" hidden>
+          <section id="detail" class="panel detail" aria-label="그룹 상세"></section>
+          <section id="preview" class="panel preview" aria-label="영향 미리보기"></section>
+          <section id="grid" class="panel grid" aria-label="글리프 그리드"></section>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>
