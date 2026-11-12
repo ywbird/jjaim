@@ -16,7 +16,7 @@ const IMPORT_FIELDS = new Set(["group", "offset", "at"]);
 const AT_FIELDS = new Set(["from", "to", "repeat"]);
 const AXIS_FIELDS = new Set(["count", "from_stride", "to_stride"]);
 const UNICODE_FIELDS = new Set(["from", "to"]);
-const MAX_EXPANDED_PLACEMENTS = 5_000_000;
+const MAX_EXPANDED_PLACEMENTS = 1_000_000;
 
 const isObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -644,6 +644,7 @@ export function validateDocument(doc) {
           errors.push(
             pathError(`${path}.at[${atIndex}].from`, `원본 그룹 ${JSON.stringify(imp.group)}의 인덱스 범위를 벗어났습니다`),
           );
+          return;
         }
         if (!Array.isArray(at.repeat)) {
           for (let j = 0; j < b - a; j += 1) {
@@ -658,7 +659,21 @@ export function validateDocument(doc) {
           }
           return;
         }
-        // Validate with the same expansion the renderer uses.
+        // Validate with the same expansion the renderer uses, but never
+        // materialize an unbounded repetition from a malformed edit.
+        let expandedSize = b - a;
+        for (const axis of at.repeat) {
+          if (isObject(axis) && isInt(axis.count) && axis.count > 0) {
+            expandedSize *= axis.count;
+          } else {
+            expandedSize = Infinity;
+            break;
+          }
+        }
+        if (expandedSize > MAX_EXPANDED_PLACEMENTS) {
+          errors.push(pathError(`${path}.at[${atIndex}]`, "반복 확장이 너무 큽니다"));
+          return;
+        }
         let placements;
         try {
           placements = expandAt(at);

@@ -160,3 +160,28 @@ test("serialization round-trips the example document", () => {
   assert.deepEqual(JSON.parse(text), hangul.doc);
   assert.equal(parseDocument(text).errors.length, 0);
 });
+
+test("huge ranges fail fast without materializing repetitions", () => {
+  const huge = structuredClone(ascii.doc);
+  huge.groups.ascii_20.imports = [
+    { group: "ascii_30", offset: [0, 0], at: [{ from: [0, 999999], to: 0 }] },
+  ];
+  const errors = validateDocument(huge);
+  assert.ok(errors.some((error) => error.includes("인덱스 범위를 벗어났습니다")));
+
+  const repeated = structuredClone(ascii.doc);
+  repeated.groups.ascii_20.imports = [
+    {
+      group: "ascii_30",
+      offset: [0, 0],
+      at: [
+        {
+          from: [0, 1],
+          to: 0,
+          repeat: [{ count: 2_000_000, to_stride: 1 }],
+        },
+      ],
+    },
+  ];
+  assert.ok(validateDocument(repeated).some((error) => error.includes("반복 확장이 너무 큽니다")));
+});
