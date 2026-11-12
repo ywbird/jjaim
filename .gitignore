@@ -1,0 +1,10 @@
+# Local tool state and Python environments
+.nanobot/
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+
+# Generated inspector previews
+tools/inspector/sheet.png
+tools/inspector/text.png

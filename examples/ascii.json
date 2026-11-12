@@ -1,0 +1,16 @@
+{
+  "metadata": {
+    "name": "Printable ASCII",
+    "version": "0.1",
+    "description": "95 printable ASCII glyphs (U+0020-U+007E) from an 8x16 texture."
+  },
+  "texture_sets": {"main": {"ascii": "ascii.png"}},
+  "groups": {
+    "ascii_20": {"description": "Printable ASCII U+0020-U+002F (space through slash).", "size": [8, 16], "count": 16, "texture": {"set": "main", "source": "ascii", "start": [0, 32], "direction": "right"}, "unicode": [{"from": [0, 16], "to": "U+0020"}]},
+    "ascii_30": {"description": "Printable ASCII U+0030-U+003F (0 through ?).", "size": [8, 16], "count": 16, "texture": {"set": "main", "source": "ascii", "start": [0, 48], "direction": "right"}, "unicode": [{"from": [0, 16], "to": "U+0030"}]},
+    "ascii_40": {"description": "Printable ASCII U+0040-U+004F (@ through O).", "size": [8, 16], "count": 16, "texture": {"set": "main", "source": "ascii", "start": [0, 64], "direction": "right"}, "unicode": [{"from": [0, 16], "to": "U+0040"}]},
+    "ascii_50": {"description": "Printable ASCII U+0050-U+005F (P through _).", "size": [8, 16], "count": 16, "texture": {"set": "main", "source": "ascii", "start": [0, 80], "direction": "right"}, "unicode": [{"from": [0, 16], "to": "U+0050"}]},
+    "ascii_60": {"description": "Printable ASCII U+0060-U+006F (backtick through o).", "size": [8, 16], "count": 16, "texture": {"set": "main", "source": "ascii", "start": [0, 96], "direction": "right"}, "unicode": [{"from": [0, 16], "to": "U+0060"}]},
+    "ascii_70": {"description": "Printable ASCII U+0070-U+007E (p through ~); the last texture slot is unmapped.", "size": [8, 16], "count": 16, "texture": {"set": "main", "source": "ascii", "start": [0, 112], "direction": "right"}, "unicode": [{"from": [0, 15], "to": "U+0070"}]}
+  }
+}

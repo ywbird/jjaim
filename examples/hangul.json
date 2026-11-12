@@ -1,0 +1,116 @@
+{
+  "metadata": {
+    "name": "Hangul and printable ASCII",
+    "version": "0.1",
+    "description": "11,172 Hangul syllables composed from 8x4x4 forms, plus 95 printable ASCII glyphs."
+  },
+  "texture_sets": {"main": {"ascii": "ascii.png", "hangul": "hangul.png"}},
+  "groups": {
+    "ascii_20": {"description": "Printable ASCII U+0020-U+002F (space through slash).", "size": [8, 16], "count": 16, "texture": {"set": "main", "source": "ascii", "start": [0, 32], "direction": "right"}, "unicode": [{"from": [0, 16], "to": "U+0020"}]},
+    "ascii_30": {"description": "Printable ASCII U+0030-U+003F (0 through ?).", "size": [8, 16], "count": 16, "texture": {"set": "main", "source": "ascii", "start": [0, 48], "direction": "right"}, "unicode": [{"from": [0, 16], "to": "U+0030"}]},
+    "ascii_40": {"description": "Printable ASCII U+0040-U+004F (@ through O).", "size": [8, 16], "count": 16, "texture": {"set": "main", "source": "ascii", "start": [0, 64], "direction": "right"}, "unicode": [{"from": [0, 16], "to": "U+0040"}]},
+    "ascii_50": {"description": "Printable ASCII U+0050-U+005F (P through _).", "size": [8, 16], "count": 16, "texture": {"set": "main", "source": "ascii", "start": [0, 80], "direction": "right"}, "unicode": [{"from": [0, 16], "to": "U+0050"}]},
+    "ascii_60": {"description": "Printable ASCII U+0060-U+006F (backtick through o).", "size": [8, 16], "count": 16, "texture": {"set": "main", "source": "ascii", "start": [0, 96], "direction": "right"}, "unicode": [{"from": [0, 16], "to": "U+0060"}]},
+    "ascii_70": {"description": "Printable ASCII U+0070-U+007E (p through ~); the last texture slot is unmapped.", "size": [8, 16], "count": 16, "texture": {"set": "main", "source": "ascii", "start": [0, 112], "direction": "right"}, "unicode": [{"from": [0, 15], "to": "U+0070"}]},
+    "initial_0": {"description": "Initial consonants without a final, for medials ㅏㅐㅑㅒㅓㅔㅕㅖㅣ.", "size": [16, 16], "count": 19, "texture": {"set": "main", "source": "hangul", "start": [0, 0], "direction": "right"}},
+    "initial_1": {"description": "Initial consonants without a final, for medials ㅗㅛㅡ.", "size": [16, 16], "count": 19, "texture": {"set": "main", "source": "hangul", "start": [0, 16], "direction": "right"}},
+    "initial_2": {"description": "Initial consonants without a final, for medials ㅜㅠ.", "size": [16, 16], "count": 19, "texture": {"set": "main", "source": "hangul", "start": [0, 32], "direction": "right"}},
+    "initial_3": {"description": "Initial consonants without a final, for medials ㅘㅙㅚㅢ.", "size": [16, 16], "count": 19, "texture": {"set": "main", "source": "hangul", "start": [0, 48], "direction": "right"}},
+    "initial_4": {"description": "Initial consonants without a final, for medials ㅝㅞㅟ.", "size": [16, 16], "count": 19, "texture": {"set": "main", "source": "hangul", "start": [0, 64], "direction": "right"}},
+    "initial_5": {"description": "Initial consonants with a final, for medials ㅏㅐㅑㅒㅓㅔㅕㅖㅣ.", "size": [16, 16], "count": 19, "texture": {"set": "main", "source": "hangul", "start": [0, 80], "direction": "right"}},
+    "initial_6": {"description": "Initial consonants with a final, for medials ㅗㅛㅜㅠㅡ.", "size": [16, 16], "count": 19, "texture": {"set": "main", "source": "hangul", "start": [0, 96], "direction": "right"}},
+    "initial_7": {"description": "Initial consonants with a final, for medials ㅘㅙㅚㅢㅝㅞㅟ.", "size": [16, 16], "count": 19, "texture": {"set": "main", "source": "hangul", "start": [0, 112], "direction": "right"}},
+    "medial_0": {"description": "Medial vowels without a final, paired with initial ㄱ or ㅋ.", "size": [16, 16], "count": 21, "texture": {"set": "main", "source": "hangul", "start": [0, 128], "direction": "right"}},
+    "medial_1": {"description": "Medial vowels without a final, paired with other initials.", "size": [16, 16], "count": 21, "texture": {"set": "main", "source": "hangul", "start": [0, 144], "direction": "right"}},
+    "medial_2": {"description": "Medial vowels with a final, paired with initial ㄱ or ㅋ.", "size": [16, 16], "count": 21, "texture": {"set": "main", "source": "hangul", "start": [0, 160], "direction": "right"}},
+    "medial_3": {"description": "Medial vowels with a final, paired with other initials.", "size": [16, 16], "count": 21, "texture": {"set": "main", "source": "hangul", "start": [0, 176], "direction": "right"}},
+    "final_0": {"description": "Final consonants paired with medials ㅏㅑㅘ.", "size": [16, 16], "count": 27, "texture": {"set": "main", "source": "hangul", "start": [0, 192], "direction": "right"}},
+    "final_1": {"description": "Final consonants paired with medials ㅓㅕㅚㅝㅟㅢㅣ.", "size": [16, 16], "count": 27, "texture": {"set": "main", "source": "hangul", "start": [0, 208], "direction": "right"}},
+    "final_2": {"description": "Final consonants paired with medials ㅐㅒㅔㅖㅙㅞ.", "size": [16, 16], "count": 27, "texture": {"set": "main", "source": "hangul", "start": [0, 224], "direction": "right"}},
+    "final_3": {"description": "Final consonants paired with medials ㅗㅛㅜㅠㅡ.", "size": [16, 16], "count": 27, "texture": {"set": "main", "source": "hangul", "start": [0, 240], "direction": "right"}},
+    "hangul_syllables": {
+      "description": "11,172 Unicode Hangul syllables (U+AC00-U+D7A3), composed from initial, medial and optional final groups.",
+      "size": [16, 16],
+      "count": 11172,
+      "imports": [
+        {"group": "initial_0", "offset": [0, 0], "at": [
+          {"from": [0, 1], "to": 0, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}, {"count": 8, "to_stride": 28}]},
+          {"from": [0, 1], "to": 560, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}]}
+        ]},
+        {"group": "initial_1", "offset": [0, 0], "at": [
+          {"from": [0, 1], "to": 224, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}]},
+          {"from": [0, 1], "to": 336, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}]},
+          {"from": [0, 1], "to": 504, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}]}
+        ]},
+        {"group": "initial_2", "offset": [0, 0], "at": [
+          {"from": [0, 1], "to": 364, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}]},
+          {"from": [0, 1], "to": 476, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}]}
+        ]},
+        {"group": "initial_3", "offset": [0, 0], "at": [
+          {"from": [0, 1], "to": 252, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}, {"count": 3, "to_stride": 28}]},
+          {"from": [0, 1], "to": 532, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}]}
+        ]},
+        {"group": "initial_4", "offset": [0, 0], "at": [
+          {"from": [0, 1], "to": 392, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}, {"count": 3, "to_stride": 28}]}
+        ]},
+        {"group": "initial_5", "offset": [0, 0], "at": [
+          {"from": [0, 1], "to": 1, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}, {"count": 8, "to_stride": 28}, {"count": 27}]},
+          {"from": [0, 1], "to": 561, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}, {"count": 27}]}
+        ]},
+        {"group": "initial_6", "offset": [0, 0], "at": [
+          {"from": [0, 1], "to": 225, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}, {"count": 27}]},
+          {"from": [0, 1], "to": 337, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}, {"count": 2, "to_stride": 28}, {"count": 27}]},
+          {"from": [0, 1], "to": 477, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}, {"count": 2, "to_stride": 28}, {"count": 27}]}
+        ]},
+        {"group": "initial_7", "offset": [0, 0], "at": [
+          {"from": [0, 1], "to": 253, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}, {"count": 3, "to_stride": 28}, {"count": 27}]},
+          {"from": [0, 1], "to": 393, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}, {"count": 3, "to_stride": 28}, {"count": 27}]},
+          {"from": [0, 1], "to": 533, "repeat": [{"count": 19, "from_stride": 1, "to_stride": 588}, {"count": 27}]}
+        ]},
+        {"group": "medial_0", "offset": [0, 0], "at": [
+          {"from": [0, 1], "to": 0, "repeat": [{"count": 21, "from_stride": 1, "to_stride": 28}]},
+          {"from": [0, 1], "to": 8820, "repeat": [{"count": 21, "from_stride": 1, "to_stride": 28}]}
+        ]},
+        {"group": "medial_1", "offset": [0, 0], "at": [
+          {"from": [0, 1], "to": 588, "repeat": [{"count": 14, "to_stride": 588}, {"count": 21, "from_stride": 1, "to_stride": 28}]},
+          {"from": [0, 1], "to": 9408, "repeat": [{"count": 3, "to_stride": 588}, {"count": 21, "from_stride": 1, "to_stride": 28}]}
+        ]},
+        {"group": "medial_2", "offset": [0, 0], "at": [
+          {"from": [0, 1], "to": 1, "repeat": [{"count": 21, "from_stride": 1, "to_stride": 28}, {"count": 27}]},
+          {"from": [0, 1], "to": 8821, "repeat": [{"count": 21, "from_stride": 1, "to_stride": 28}, {"count": 27}]}
+        ]},
+        {"group": "medial_3", "offset": [0, 0], "at": [
+          {"from": [0, 1], "to": 589, "repeat": [{"count": 14, "to_stride": 588}, {"count": 21, "from_stride": 1, "to_stride": 28}, {"count": 27}]},
+          {"from": [0, 1], "to": 9409, "repeat": [{"count": 3, "to_stride": 588}, {"count": 21, "from_stride": 1, "to_stride": 28}, {"count": 27}]}
+        ]},
+        {"group": "final_0", "offset": [0, 0], "at": [
+          {"from": [0, 1], "to": 1, "repeat": [{"count": 19, "to_stride": 588}, {"count": 27, "from_stride": 1}]},
+          {"from": [0, 1], "to": 57, "repeat": [{"count": 19, "to_stride": 588}, {"count": 27, "from_stride": 1}]},
+          {"from": [0, 1], "to": 253, "repeat": [{"count": 19, "to_stride": 588}, {"count": 27, "from_stride": 1}]}
+        ]},
+        {"group": "final_1", "offset": [0, 0], "at": [
+          {"from": [0, 1], "to": 113, "repeat": [{"count": 19, "to_stride": 588}, {"count": 27, "from_stride": 1}]},
+          {"from": [0, 1], "to": 169, "repeat": [{"count": 19, "to_stride": 588}, {"count": 27, "from_stride": 1}]},
+          {"from": [0, 1], "to": 309, "repeat": [{"count": 19, "to_stride": 588}, {"count": 27, "from_stride": 1}]},
+          {"from": [0, 1], "to": 393, "repeat": [{"count": 19, "to_stride": 588}, {"count": 27, "from_stride": 1}]},
+          {"from": [0, 1], "to": 449, "repeat": [{"count": 19, "to_stride": 588}, {"count": 27, "from_stride": 1}]},
+          {"from": [0, 1], "to": 533, "repeat": [{"count": 19, "to_stride": 588}, {"count": 2, "to_stride": 28}, {"count": 27, "from_stride": 1}]}
+        ]},
+        {"group": "final_2", "offset": [0, 0], "at": [
+          {"from": [0, 1], "to": 29, "repeat": [{"count": 19, "to_stride": 588}, {"count": 27, "from_stride": 1}]},
+          {"from": [0, 1], "to": 85, "repeat": [{"count": 19, "to_stride": 588}, {"count": 27, "from_stride": 1}]},
+          {"from": [0, 1], "to": 141, "repeat": [{"count": 19, "to_stride": 588}, {"count": 27, "from_stride": 1}]},
+          {"from": [0, 1], "to": 197, "repeat": [{"count": 19, "to_stride": 588}, {"count": 27, "from_stride": 1}]},
+          {"from": [0, 1], "to": 281, "repeat": [{"count": 19, "to_stride": 588}, {"count": 27, "from_stride": 1}]},
+          {"from": [0, 1], "to": 421, "repeat": [{"count": 19, "to_stride": 588}, {"count": 27, "from_stride": 1}]}
+        ]},
+        {"group": "final_3", "offset": [0, 0], "at": [
+          {"from": [0, 1], "to": 225, "repeat": [{"count": 19, "to_stride": 588}, {"count": 27, "from_stride": 1}]},
+          {"from": [0, 1], "to": 337, "repeat": [{"count": 19, "to_stride": 588}, {"count": 2, "to_stride": 28}, {"count": 27, "from_stride": 1}]},
+          {"from": [0, 1], "to": 477, "repeat": [{"count": 19, "to_stride": 588}, {"count": 2, "to_stride": 28}, {"count": 27, "from_stride": 1}]}
+        ]}
+      ],
+      "unicode": [{"from": [0, 11172], "to": "U+AC00"}]
+    }
+  }
+}
