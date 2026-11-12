@@ -1,6 +1,6 @@
 # Declarative Texture Font Editor (v0.1)
 
-- Status: design draft. Do not implement yet.
+- Status: v0.1 implemented in this directory. Later changes should update this design first.
 - Audience: a coding agent with no prior context. It may implement this editor from this file plus `../../SPEC.md` and `../../examples/`.
 - Goal: edit glyphs by arranging source groups as children, not by painting.
 - Input model: the project is a directory of group definitions. Editing one group may change many glyphs that import it.

@@ -7,6 +7,7 @@
 - [`SPEC.md`](SPEC.md): 이미지 경로만 등록하는 텍스처셋, 그룹의 추출·임포트·반복, 유니코드 매핑의 명세
 - [`examples/`](examples/): 8×4×4벌 한글 선언·텍스처·원본 BIN과 8×16 DOS 글리프 선언·BIN·텍스처
 - [`tools/inspector/`](tools/inspector/): 선언 검사·PNG 미리보기 CLI ([사용법](tools/inspector/README.md), [명세](tools/inspector/SPEC.md))
+- [`tools/editor/`](tools/editor/): 그룹 설명·임포트·텍스처 영역을 편집하는 정적 브라우저 편집기 ([사용법](tools/editor/README.md), [설계](tools/editor/SPEC.md))
 - [`tools/font_bin_to_png.py`](tools/font_bin_to_png.py): BIN을 PNG 텍스처로 변환
 - [`docs/`](docs/): 8×4×4벌 참고 문서와 이전 명세 백업
 
@@ -25,3 +26,5 @@ uv run pytest
 ```
 
 한글 예제는 U+AC00부터 U+D7A3까지 11,172자를 정의합니다. ASCII 예제 [`examples/ascii.json`](examples/ascii.json)은 U+0020부터 U+007E까지 95자를 정의하며, 같은 그룹이 `hangul.json`에도 들어 있어 한 선언으로 영문과 한글을 함께 그릴 수 있습니다. 텍스처를 다시 만들려면 같은 디렉터리에서 `uv run python ../font_bin_to_png.py ../../examples/hangul.bin` 또는 `... ../../examples/ascii.bin`을 실행하면 됩니다. 출력 PNG는 입력 BIN 옆에 저장됩니다.
+
+브라우저 편집기는 프로젝트 루트에서 `python3 -m http.server 8000`을 실행한 뒤 <http://localhost:8000/tools/editor/>를 엽니다.
