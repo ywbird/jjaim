@@ -5,6 +5,17 @@
   Declarative Glyph Composition
 </p>
 
+<!-- Official 0rwx logos from https://0rwx.com/ (CC0 / public domain). -->
+<p align="center">
+  <a href="https://0rwx.com/">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/assets/AI-X-dark.svg">
+      <source media="(prefers-color-scheme: light)" srcset="docs/assets/AI-X-light.svg">
+      <img src="docs/assets/AI-X-light.svg" alt="AI:X — AI가 만든 프로젝트 (0rwx)" width="64" height="64">
+    </picture>
+  </a>
+</p>
+
 <p align="center">
   <a href="SPEC.md">명세</a> ·
   <a href="#바로-사용하기">빠른 시작</a> ·
