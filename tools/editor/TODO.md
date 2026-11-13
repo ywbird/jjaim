@@ -9,6 +9,13 @@
 
 ## 피드백
 
+- [x] 그리드도 좀 얇음. 좀 더 두껍게 — `44f8ceb`, 2px grid browser pixel test
+- [x] 자동으로 마지막 작업 불러오기 — `44f8ceb`, reload auto-load browser test
+- [x] 선언 기반 텍스쳐 최소 크기로 선언만 주어졌을때 텍스쳐 연결 popup에 빈 텍스쳐 생성 버튼 — `44f8ceb`, blank texture unit + browser test
+- [x] 프로젝트를 통째로 하나의 zip 파일로 내보내고 불러오는 기능 (텍스쳐 zip 불러오기와 호환. 선언과 텍스쳐를 하나의 zip에) — `9ba85a0`, project unit + browser roundtrip
+    - 이건 구현할때 유저한테 디테일한 부분 질문 하면서 구현할것.
+    - zip 포멧이지만 .jjaim 확장자 사용하기
+
 - [x] 다크모드에서 그리드는 밝은색이어야함 — `c8fb4c2`, browser dark board test
 - [x] 선택 영역 사각형 테두리가 얇음. 좀 더 두껍게 — `c8fb4c2`, 2px+ dashed border
 - [x] 선택을 한 뒤 자동으로 move 모드로 변경 — `c8fb4c2`, browser test
