@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="236" viewBox="0 0 800 236" role="img" aria-labelledby="title description">
+  <title id="title">JJaim — 각을 구성하는 세 부품</title>
+  <desc id="description">실제 한글 예제의 initial_5[0], medial_2[0], final_0[0]을 같은 좌표에 겹쳐 hangul_syllables[1], U+AC01 각을 만듭니다. 각 픽셀 모양은 예제 PNG에서 가져왔습니다.</desc>
+  <defs>
+    <path id="initial" d="M1 1h8v1H1ZM1 2h8v1H1ZM7 3h2v1H7ZM7 4h2v1H7ZM7 5h2v1H7ZM7 6h2v1H7ZM7 7h2v1H7ZM7 8h2v1H7Z"/>
+    <path id="medial" d="M11 1h2v1H11ZM11 2h2v1H11ZM11 3h2v1H11ZM11 4h4v1H11ZM11 5h4v1H11ZM11 6h2v1H11ZM11 7h2v1H11ZM11 8h2v1H11ZM11 9h2v1H11Z"/>
+    <path id="final" d="M3 10h10v1H3ZM3 11h10v1H3ZM11 12h2v1H11ZM11 13h2v1H11ZM11 14h2v1H11Z"/>
+    <g id="composed"><use href="#initial"/><use href="#medial"/><use href="#final"/></g>
+  </defs>
+  <rect width="800" height="236" fill="#f7f5f0"/>
+  <path d="M0 .5H800M0 235.5H800" fill="none" stroke="#d8d9d0"/>
+  <g font-family="'Noto Sans CJK KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif" font-size="26" fill="#242722" text-anchor="middle">
+    <text x="90" y="48">초성</text>
+    <text x="278" y="48">중성</text>
+    <text x="466" y="48">종성</text>
+    <text x="704" y="48" fill="#a63823">합성</text>
+  </g>
+  <g fill="#fcfbf8" stroke="#d8d9d0">
+    <rect x="41.5" y="72.5" width="97" height="97"/>
+    <rect x="229.5" y="72.5" width="97" height="97"/>
+    <rect x="417.5" y="72.5" width="97" height="97"/>
+    <rect x="655.5" y="72.5" width="97" height="97" stroke="#a63823"/>
+  </g>
+  <g fill="#242722" shape-rendering="crispEdges">
+    <use href="#initial" transform="translate(42 73) scale(6)"/>
+    <use href="#medial" transform="translate(230 73) scale(6)"/>
+    <use href="#final" transform="translate(418 73) scale(6)"/>
+    <use href="#composed" transform="translate(656 73) scale(6)"/>
+  </g>
+  <g fill="none" stroke-width="2">
+    <path d="M174 121H194M184 111V131M362 121H382M372 111V131" stroke="#63675e"/>
+    <path d="M562 121H608M597 110L608 121L597 132" stroke="#a63823"/>
+  </g>
+  <g font-family="'Liberation Mono', Consolas, monospace" font-size="18" text-anchor="middle" fill="#63675e">
+    <text x="278" y="211">offset: [0, 0]</text>
+    <text x="704" y="211" fill="#a63823">U+AC01</text>
+  </g>
+</svg>
