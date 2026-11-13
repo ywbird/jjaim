@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
-import { createReadStream, existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { extname, join, normalize, resolve, sep } from "node:path";
@@ -50,6 +50,9 @@ const temp = mkdtempSync(join(tmpdir(), "glyph-editor-browser-"));
 const downloadDir = join(temp, "downloads");
 const declarationPath = join(temp, "browser.json");
 const pngPath = join(temp, "sheet.png");
+const smallDir = join(temp, "small");
+mkdirSync(smallDir);
+const smallPngPath = join(smallDir, "sheet.png");
 writeFileSync(
   declarationPath,
   JSON.stringify({
@@ -73,6 +76,7 @@ writeFileSync(
     data: Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 255]),
   }),
 );
+writeFileSync(smallPngPath, await encodePng({ width: 1, height: 1, data: Uint8Array.from([0, 0, 0, 255]) }));
 
 const server = serve(REPO_ROOT);
 server.listen(0, "127.0.0.1");
@@ -105,6 +109,10 @@ try {
   await (await page.$("#declaration-file")).uploadFile(declarationPath);
   await page.waitForFunction(() => window.__editor?.state.workspace?.fileName === "browser.json");
   assert.equal(await page.evaluate(() => window.__editor.state.workspace.declaration.unicodeMap.get(0x41).group), "chars");
+
+  await (await page.$("#image-file")).uploadFile(smallPngPath);
+  await page.waitForFunction(() => document.querySelector("#import-report").textContent.includes("최소 2×1"));
+  assert.equal(await page.evaluate(() => window.__editor.state.workspace.assets.has("sheet.png")), false);
 
   await (await page.$("#image-file")).uploadFile(pngPath);
   await page.waitForFunction(() => window.__editor.state.workspace.assets.has("sheet.png"));

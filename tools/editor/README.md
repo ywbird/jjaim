@@ -25,6 +25,7 @@ GitHub Pages에서는 `https://USER.github.io/REPO/tools/editor/`처럼 저장�
 
 - UTF-8 JSON 선언 하나. `metadata`, `texture_sets`, `groups`와 v0.3 그룹 필드를 읽고, 알 수 없는 필드·중복 키·순환 임포트·유니코드 충돌은 거부합니다. 선언 원문은 수정하지 않습니다.
 - PNG 파일 여러 개 또는 PNG를 담은 일반 ZIP. ZIP은 stored/deflate만 읽고, 암호화·분할·ZIP64·심볼릭 링크·정규화 후 중복 경로를 거부합니다.
+- 연결하는 PNG는 선언의 모든 추출 사각형을 포함할 만큼 커야 합니다. 부족하면 `이미지 W×H, 최소 W×H 필요` 오류로 연결을 거부하며 기존 자산은 바꾸지 않습니다.
 - 선택 사항: `.ttf`, `.otf`, `.woff` 참고 폰트. WOFF2와 TTC/OTC는 거부합니다.
 
 출력:

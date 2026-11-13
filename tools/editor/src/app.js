@@ -1404,16 +1404,17 @@ function renderSourceTable() {
   const rows = sourceRows(state.workspace.declaration, state.workspace.assets);
   const table = el("table");
   const header = el("tr");
-  for (const label of ["셋", "소스", "선언 경로", "연결", "파일", "크기", "상태"]) header.append(el("th", { text: label }));
+  for (const label of ["셋", "소스", "선언 경로", "필요 최소", "연결", "파일", "크기", "상태"]) header.append(el("th", { text: label }));
   table.append(el("thead", {}, header));
   const body = el("tbody");
   for (const row of rows) {
-    const pick = el("button", { class: "small", text: "파일 선택", onclick: () => openManualLink(row.path) });
+    const pick = el("button", { class: "small", type: "button", text: "파일 선택", onclick: () => openManualLink(row.path) });
     const tr = el("tr");
     tr.append(
       el("td", { text: row.set }),
       el("td", { text: row.source }),
       el("td", { text: row.declaredPath }),
+      el("td", { text: row.required ? `${row.required.width}×${row.required.height}` : "—" }),
       el("td", {}, pick),
       el("td", { text: row.asset?.path ?? "—" }),
       el("td", { text: row.asset ? `${row.asset.width}×${row.asset.height}` : "—" }),
@@ -1481,16 +1482,18 @@ async function handleImages(files) {
 }
 
 async function handleManualFile(file) {
-  if (!state.linkTarget) return;
+  const target = state.linkTarget;
+  state.linkTarget = null;
+  if (!target || !file) return;
   cancelDraft();
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const existing = state.workspace.assets.get(state.linkTarget);
+    const existing = state.workspace.assets.get(target);
     if (existing) {
       const ok = await confirmAction("현재 이미지를 교체할까요? 차이는 하나의 되돌릴 수 있는 명령으로 기록됩니다.");
       if (!ok) return;
       const before = state.workspace.assets.snapshot();
-      await replaceAssets(state.workspace.declaration, state.workspace.assets, [{ path: state.linkTarget, bytes }]);
+      await replaceAssets(state.workspace.declaration, state.workspace.assets, [{ path: target, bytes }]);
       const changes = diffSnapshotToAssets(before, state.workspace.assets);
       if (changes.size) {
         const revision = state.workspace.history.commit(changes, { kind: "replace" }, { applied: true });
@@ -1498,7 +1501,7 @@ async function handleManualFile(file) {
         persist("replace");
       }
     } else {
-      await manualLink(state.workspace.declaration, state.workspace.assets, state.linkTarget, bytes);
+      await manualLink(state.workspace.declaration, state.workspace.assets, target, bytes);
       persist("link");
     }
     state.renderer.invalidate();
@@ -1510,7 +1513,6 @@ async function handleManualFile(file) {
   } catch (error) {
     els.importReport.textContent = error.message;
   }
-  state.linkTarget = null;
 }
 
 // ---------- works ----------
@@ -1644,7 +1646,11 @@ function bindEvents() {
   els.emptyOpenWorks.addEventListener("click", openWorksList);
   els.worksClose.addEventListener("click", () => els.worksDialog.close());
   els.openSources.addEventListener("click", openSources);
-  els.importImages.addEventListener("click", () => els.imageFile.click());
+  els.importImages.addEventListener("click", () => {
+    state.linkTarget = null;
+    els.imageFile.click();
+  });
+  els.sourceDialog.addEventListener("close", () => { state.linkTarget = null; });
   els.imageFile.addEventListener("change", async () => {
     const files = [...(els.imageFile.files ?? [])];
     els.imageFile.value = "";
