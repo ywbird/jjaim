@@ -4,11 +4,17 @@
 
 ## 실행
 
-서버 프로세스, 설치, 빌드 없이 정적 파일만으로 동작합니다. 저장소 루트에서:
+서버 프로세스, 설치, 빌드 없이 정적 파일만으로 동작합니다. 저장소 루트에서 열거나 `tools/editor` 자체를 루트로 열어도 됩니다.
 
 ```sh
+# 저장소 루트에서
 python3 -m http.server 8000
 # http://localhost:8000/tools/editor/
+
+# 또는 tools/editor에서
+cd tools/editor
+python3 -m http.server 8000
+# http://localhost:8000/
 ```
 
 GitHub Pages에서는 `https://USER.github.io/REPO/tools/editor/`처럼 저장소 하위 경로로 엽니다. 모든 앱 자산 URL은 문서 기준 상대 경로이며 CDN·원격 API·분석 서버 호출이 없습니다. `file://` 직접 열기와 모바일 전용 UI는 지원 대상이 아닙니다.

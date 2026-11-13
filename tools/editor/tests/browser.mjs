@@ -157,8 +157,21 @@ try {
   assert.equal(restored.head, head);
   assert.deepEqual(restored.pixels, [0, 0, 0, 255, 0, 0, 0, 0]);
 
+  const directServer = serve(EDITOR_ROOT);
+  directServer.listen(0, "127.0.0.1");
+  await once(directServer, "listening");
+  try {
+    const directPage = await browser.newPage();
+    await directPage.setViewport({ width: 1280, height: 720 });
+    await directPage.goto(`http://127.0.0.1:${directServer.address().port}/`, { waitUntil: "networkidle0" });
+    assert.equal(await directPage.title(), "선언 기반 글꼴 텍스처 편집기");
+    await directPage.waitForFunction(() => window.__editor?.state?.workspace === null);
+  } finally {
+    directServer.close();
+  }
+
   assert.deepEqual(externalRequests, []);
-  console.log("browser: Chromium headless passed (relative subpath, offline edits/save/export, reload restore, no remote requests)");
+  console.log("browser: Chromium headless passed (repo subpath and editor-root serving, offline edits/save/export, reload restore, no remote requests)");
 } finally {
   if (browser) await browser.close();
   server.close();

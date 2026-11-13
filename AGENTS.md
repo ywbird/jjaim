@@ -32,10 +32,15 @@ node --test                    # full suite
 node --test src/model.test.mjs # one file
 ```
 
-Serve either static page from the repo root and open the tool directory:
+Serve either static page from the repo root and open the tool directory, or serve `tools/editor` itself:
 
 ```sh
 python3 -m http.server 8000
+# http://localhost:8000/tools/editor/
+
+cd tools/editor
+python3 -m http.server 8000
+# http://localhost:8000/
 ```
 
 Pixel-texture editor (run from `tools/editor`; npm is test-only):
