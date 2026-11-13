@@ -9,6 +9,9 @@
 
 ## 피드백
 
+- [x] context row에 직계 글리프 목록 미리보기와 직계 글리프 목록 toggle을 합치기: 글리프 미리보기 자체를 토글로 사용, 미리보기 사각형 좌상단에 글리프로 이동 버튼 — `2f8b4ce`, browser toggle/nav test
+    + 직계 글리프 미리보기 목록의 중요도가 커졌으므로, 현재 id=context 만큼 크게, id=context 우측에 나열하는 방식으로.
+
 - [x] 문자 셋 또는 부품 사용처에서 글꼴을 선택했을때 context row와 그리는 공간의 글꼴이 교체되지 않음. 현재는 context row의 현재 직계 자식 글리프 목록 표시만 선택된 글꼴의 직계 글리프 목록으로 교체됨. — `3c3ac9f`, browser canvas test
 
 - [x] 다크모드일때 비트맵 글꼴은 하얀색이도록 — `018b330`, browser canvas test
@@ -31,3 +34,7 @@
 - [x] 다크모드(토글) — `6ff3ffd`, browser test
 - [x] i18n(한글, 영어) — `6ff3ffd`, browser test
 
+## 아직 처리하지 말것. 나중에 모아서 요청할 예정
+
+- [ ] ui 전반적 크기 증가. 지금은 좀 작아서 가독성이 별로임
+- [ ] AI 느낌 줄이기 위해 taste-skill 도입?
