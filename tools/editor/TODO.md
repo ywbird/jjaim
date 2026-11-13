@@ -9,6 +9,10 @@
 
 ## 피드백
 
+- [x] 열기 메뉴에 프리셋 옵션. 누르면 프리셋 팝업 띄우고, hangul이랑 ascii 프리셋 (선언 + 텍스쳐) — `5492abe`, preset browser test
+- [x] 설정 팝업에 언어 선택이 생겼으니, 영어/한글 토글 버튼은 없애. — `5492abe`, header removed + settings language test
+- [x] 부품 사용처 목록 하단 버튼을 이전, 다음 말고 방향 아이콘으로. 다른 이전, 다음 버튼들도 아이콘으로 — `5492abe`, usage pager icon test
+
 - [x] 밑에 context row 에 미리보기도 편집 보드처럼 항상 선명하게 해야할듯함. 너무 흐려짐. — `1aca766`, context dataURL + pixelated test
 
 - [x] 글꼴 미리보기를 포함해서 비트맵들이 전부 anti aliasing이 꺼져있는 것 같은데, 켤 수 있도록 설정 — `3f3c3be`, settings AA toggle + browser test
