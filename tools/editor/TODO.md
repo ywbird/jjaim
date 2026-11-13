@@ -10,6 +10,8 @@
 
 ## 피드백
 
+- [x] 프리셋 선택에 텍스쳐를 선택할 수 있도록 해. 루트에서 examples/fonts/read_ks.txt.utf8 보면 각각 폰트 파일에 폰트 이름 대응되어 있으니까, ascii랑 hangul프리셋에 폰트 텍스쳐 선택 추가해줘 — `4abfda0`, preset texture hash browser test
+
 - [x] 폰트 섀도잉 값들에서 각 슬라이더를 세로로 정렬. 보통 table 쓰던데 — `6f06519`, browser column alignment test
 
 - [x] 폰트 섀도잉 슬라이더들을 <라벨> <슬라이더> 를 가로로 배치. — `c4f467a`, browser same-row test
