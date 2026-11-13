@@ -98,6 +98,23 @@ test("later assets keep their own original across earlier revisions", () => {
   assert.deepEqual([...history.stateAt(history.headId).get("sheet.png")], black);
 });
 
+test("applied commits record replacements without re-applying or revalidating", () => {
+  const { assets, asset } = assetFrom([clear]);
+  const history = new History(assets);
+  asset.current.set(black, 0);
+  const revision = history.commit(
+    new Map([["sheet.png", [{ x: 0, y: 0, before: clear, after: black }]]]),
+    { kind: "replace" },
+    { applied: true },
+  );
+  assert.equal(revision.kind, "replace");
+  assert.deepEqual([...asset.current], black);
+  history.undo();
+  assert.deepEqual([...asset.current], clear);
+  history.redo();
+  assert.deepEqual([...asset.current], black);
+});
+
 test("history serializes and restores its head and branch choice", () => {
   const { assets, asset } = assetFrom([clear]);
   const history = new History(assets);

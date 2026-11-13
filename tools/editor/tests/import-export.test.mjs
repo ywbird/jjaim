@@ -4,7 +4,7 @@ import { parseDeclaration } from "../src/declaration.js";
 import { AssetStore } from "../src/assets.js";
 import { encodePng } from "../src/png.js";
 import { makeZip } from "../src/zip.js";
-import { importImages, replaceAssets } from "../src/importer.js";
+import { importImages, manualLink, replaceAssets } from "../src/importer.js";
 import { exportChanged, exportSingle, exportZip } from "../src/exporter.js";
 import { readZip } from "../src/zip.js";
 import { decodePng } from "../src/png.js";
@@ -79,6 +79,51 @@ test("replace requires matching size and records a full current image swap", asy
   assert.deepEqual([...before.get("sheet.png")], black);
   assert.deepEqual([...assets.get("sheet.png").original], black);
   await assert.rejects(replaceAssets(declarationModel, assets, [{ path: "sheet.png", bytes: await encodePng({ width: 2, height: 1, data: new Uint8Array(8) }) }]), /크기/);
+});
+
+test("re-import plans an explicit replacement and leaves pixels untouched until confirmed", async () => {
+  const declarationModel = declaration();
+  const assets = new AssetStore();
+  await importImages(declarationModel, assets, [file("sheet.png", await png([black]))]);
+  const result = await importImages(declarationModel, assets, [file("sheet.png", await png([white]))]);
+  assert.equal(result.replacements.size, 1);
+  assert.deepEqual([...assets.get("sheet.png").current], black);
+  assert.deepEqual([...assets.get("sheet.png").original], black);
+  await replaceAssets(declarationModel, assets, [{ path: "sheet.png", bytes: await png([white]) }]);
+  assert.deepEqual([...assets.get("sheet.png").current], white);
+  assert.deepEqual([...assets.get("sheet.png").original], black);
+});
+
+test("manual link and replacement reject size changes", async () => {
+  const declarationModel = declaration();
+  const assets = new AssetStore();
+  await manualLink(declarationModel, assets, "sheet.png", await png([black]));
+  assert.deepEqual([...assets.get("sheet.png").current], black);
+  await assert.rejects(manualLink(declarationModel, assets, "sheet.png", await png([black, white])), /크기/);
+  assert.deepEqual([...assets.get("sheet.png").current], black);
+});
+
+test("random low-compression PNGs survive an own ZIP round-trip", async () => {
+  const assets = new AssetStore();
+  const paths = ["random/a.png", "random/b.png"];
+  for (const path of paths) {
+    const data = new Uint8Array(512 * 512 * 4);
+    for (let index = 0; index < data.length; index += 4) {
+      data[index] = (index * 37) & 255;
+      data[index + 1] = (index * 59) & 255;
+      data[index + 2] = (index * 83) & 255;
+      data[index + 3] = 128 + ((index * 11) & 127);
+    }
+    assets.bind(path, await decodePng(await encodePng({ width: 512, height: 512, data })));
+  }
+  const zip = await exportZip(assets, paths, "random");
+  const result = await readZip(zip.bytes);
+  assert.equal(result.entries.length, 2);
+  for (const entry of result.entries) {
+    const decoded = await decodePng(entry.data);
+    assert.equal(decoded.width, 512);
+    assert.deepEqual([...decoded.data], [...assets.get(entry.name).current]);
+  }
 });
 
 test("export writes full textures, sorted ZIP paths, and PNG-only entries", async () => {

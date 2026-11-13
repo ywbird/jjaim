@@ -51,7 +51,7 @@ export class History {
     return [...this.revisions.values()].filter((revision) => revision.parent === id).sort((a, b) => a.index - b.index);
   }
 
-  commit(changesByAsset, meta = {}) {
+  commit(changesByAsset, meta = {}, { applied = false } = {}) {
     const normalized = new Map();
     for (const [path, raw] of changesByAsset) {
       const asset = this.assets.get(path);
@@ -60,12 +60,14 @@ export class History {
       if (changes.length) normalized.set(path, changes);
     }
     if (normalized.size === 0) return null;
-    for (const [path, changes] of normalized) {
-      const asset = this.assets.get(path);
-      for (const change of changes) {
-        const offset = (change.y * asset.width + change.x) * 4;
-        const current = [asset.current[offset], asset.current[offset + 1], asset.current[offset + 2], asset.current[offset + 3]];
-        if (!samePixel(current, change.before)) throw new Error(`픽셀 상태가 명령의 before와 다릅니다: ${path} (${change.x},${change.y})`);
+    if (!applied) {
+      for (const [path, changes] of normalized) {
+        const asset = this.assets.get(path);
+        for (const change of changes) {
+          const offset = (change.y * asset.width + change.x) * 4;
+          const current = [asset.current[offset], asset.current[offset + 1], asset.current[offset + 2], asset.current[offset + 3]];
+          if (!samePixel(current, change.before)) throw new Error(`픽셀 상태가 명령의 before와 다릅니다: ${path} (${change.x},${change.y})`);
+        }
       }
     }
     const parent = this.headId;
@@ -80,7 +82,9 @@ export class History {
       index: this.sequence,
     };
     this.revisions.set(revision.id, revision);
-    for (const [path, changes] of normalized) applyChanges(this.assets.get(path), changes, "after");
+    if (!applied) {
+      for (const [path, changes] of normalized) applyChanges(this.assets.get(path), changes, "after");
+    }
     this.headId = revision.id;
     this.redoChoice = null;
     return revision;

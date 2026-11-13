@@ -42,7 +42,7 @@ export async function readImageFiles(files) {
     const lower = file.name.toLowerCase();
     const bytes = await bytesOf(file);
     if (lower.endsWith(".zip") || (bytes[0] === 0x50 && bytes[1] === 0x4b)) {
-      const result = await readZip(bytes, { entries: IMPORT_LIMITS.entries });
+      const result = await readZip(bytes, { entries: IMPORT_LIMITS.entries, fileBytes: IMPORT_LIMITS.fileBytes });
       for (const entry of result.entries) candidates.push({ name: entry.name, bytes: entry.data, fromZip: true });
       skipped.push(...result.skipped);
     } else if (lower.endsWith(".png") || isPng(bytes)) {
@@ -52,6 +52,7 @@ export async function readImageFiles(files) {
       skipped.push(file.name);
     }
   }
+  if (candidates.length === 0) throw new ImportError("가져올 PNG가 없습니다");
   return { candidates, skipped };
 }
 
@@ -71,19 +72,32 @@ export async function decodeCandidates(candidates) {
 export function planLinks(declaration, assets, candidates) {
   const rows = sourceRows(declaration, assets);
   const unlinked = rows.filter((row) => row.path && !row.asset);
-  const declared = new Set(unlinked.map((row) => row.path));
+  const connected = new Set(assets.paths());
+  const declared = new Set(rows.map((row) => row.path).filter(Boolean));
   const byExact = new Map();
   const byBase = new Map();
+  const byConnectedBase = new Map();
   for (const candidate of candidates) {
     const resolved = resolveLogicalPath(candidate.name);
     if (resolved.error) continue;
-    if (declared.has(resolved.path) && !byExact.has(resolved.path)) byExact.set(resolved.path, { ...candidate, path: resolved.path });
+    const item = { ...candidate, path: resolved.path };
+    if ((connected.has(resolved.path) || declared.has(resolved.path)) && !byExact.has(resolved.path)) {
+      byExact.set(resolved.path, item);
+    }
     const base = basename(resolved.path);
     if (!byBase.has(base)) byBase.set(base, []);
-    byBase.get(base).push({ ...candidate, path: resolved.path });
+    byBase.get(base).push(item);
+    if (connected.has(resolved.path)) {
+      if (!byConnectedBase.has(base)) byConnectedBase.set(base, []);
+      byConnectedBase.get(base).push(item);
+    }
   }
   const links = new Map();
-  for (const [path, candidate] of byExact) links.set(path, candidate);
+  const replacements = new Map();
+  for (const [path, candidate] of byExact) {
+    if (connected.has(path)) replacements.set(path, candidate);
+    else links.set(path, candidate);
+  }
   for (const row of unlinked) {
     if (links.has(row.path)) continue;
     const base = basename(row.path);
@@ -93,14 +107,18 @@ export function planLinks(declaration, assets, candidates) {
       links.set(row.path, matchingCandidates[0]);
     }
   }
-  const linkedPaths = new Set([...assets.assets.keys()]);
-  for (const path of links.keys()) linkedPaths.add(path);
-  const referenced = new Set([...declared, ...linkedPaths]);
+  for (const [base, items] of byConnectedBase) {
+    const matchingPaths = [...connected].filter((path) => basename(path) === base);
+    if (matchingPaths.length === 1 && items.length === 1 && !items[0].fromZip && !replacements.has(matchingPaths[0])) {
+      replacements.set(matchingPaths[0], items[0]);
+    }
+  }
+  const referenced = new Set([...declared, ...connected, ...links.keys()]);
   const unreferenced = candidates.filter((candidate) => {
     const resolved = resolveLogicalPath(candidate.name);
     return resolved.path && !referenced.has(resolved.path);
   });
-  return { links, unreferenced, unlinked, rows };
+  return { links, replacements, unreferenced, unlinked, rows };
 }
 
 export async function importImages(declaration, assets, files) {
@@ -126,6 +144,7 @@ export async function importImages(declaration, assets, files) {
   }
   return {
     linked,
+    replacements: plan.replacements,
     errors,
     skipped,
     unreferenced: plan.unreferenced.map((candidate) => candidate.name),
