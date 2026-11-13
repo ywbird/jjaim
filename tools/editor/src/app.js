@@ -73,6 +73,8 @@ const state = {
     textZoom: 4,
   },
   selection: null,
+  groupGlyphPage: 0,
+  groupGlyphAnchor: null,
   draft: null,
   drag: null,
   keyMove: null,
@@ -132,6 +134,12 @@ const els = {
   groupSearch: $("#group-search"),
   groupList: $("#group-list"),
   toggleGroupGrid: $("#toggle-group-grid"),
+  groupGlyphSection: $("#group-glyph-section"),
+  groupGlyphGrid: $("#group-glyph-grid"),
+  groupGlyphPager: $("#group-glyph-pager"),
+  groupGlyphPage: $("#group-glyph-page"),
+  groupGlyphPrev: $("#group-glyph-prev"),
+  groupGlyphNext: $("#group-glyph-next"),
   toolbar: $("#toolbar"),
   zoom: $("#zoom"),
   gridToggle: $("#grid-toggle"),
@@ -574,6 +582,8 @@ async function loadWorkspaceFont(fontData) {
 
 // ---------- navigation ----------
 
+const GROUP_GLYPH_PAGE_SIZE = 32;
+
 function renderSetSelect() {
   els.setSelect.replaceChildren();
   if (!state.workspace) return;
@@ -600,7 +610,8 @@ function applyGridVisibility() {
   els.pageControls.hidden = characterCollapsed;
   els.toggleCharacterGrid.setAttribute("aria-expanded", String(!characterCollapsed));
   els.toggleCharacterGrid.querySelector(".collapse-label").textContent = t(characterCollapsed ? "nav.expand" : "nav.collapse");
-  els.groupList.hidden = groupCollapsed;
+  els.groupGlyphGrid.hidden = groupCollapsed;
+  if (groupCollapsed) els.groupGlyphPager.hidden = true;
   els.toggleGroupGrid.setAttribute("aria-expanded", String(!groupCollapsed));
   els.toggleGroupGrid.querySelector(".collapse-label").textContent = t(groupCollapsed ? "nav.expand" : "nav.collapse");
 }
@@ -659,28 +670,11 @@ function renderNavigator() {
   const query = els.groupSearch.value.trim();
   for (const group of state.workspace.declaration.groups.values()) {
     if (query && !group.name.includes(query)) continue;
-    const selected = state.selected?.group === group.name;
-    const previewIndex = selected ? state.selected.index : 0;
     const item = el("button", {
-      class: `group-tile${selected ? " selected" : ""}`,
+      class: `group-item${state.selected?.group === group.name ? " selected" : ""}`,
       type: "button",
-      title: `${group.name} · ${group.count} · ${group.width}×${group.height}`,
       onclick: () => selectGlyph(group.name, Math.min(state.selected?.index ?? 0, group.count - 1), { keepContext: false }),
-    });
-    if (group.count > 0) {
-      const result = state.renderer.renderGlyph(group.name, Math.min(group.count - 1, previewIndex));
-      const thumb = el("canvas");
-      fitImageToCanvas(thumb, result.image, 52);
-      if (result.errors.length) {
-        item.classList.add("has-error");
-        thumb.title = result.errors[0].message;
-      }
-      item.append(thumb);
-    }
-    item.append(
-      el("span", { class: "group-name", text: group.name }),
-      el("span", { class: "group-meta", text: `${group.count} · ${group.width}×${group.height}` }),
-    );
+    }, el("strong", { text: group.name }), el("small", { text: ` · ${group.count} · ${group.width}×${group.height}` }));
     els.groupList.append(item);
   }
 }
@@ -1087,6 +1081,49 @@ function renderChildStrip(group, index) {
   }
 }
 
+function renderGroupGlyphGrid(group) {
+  if (!group || !state.selected || state.selected.group !== group.name) {
+    els.groupGlyphSection.hidden = true;
+    els.groupGlyphGrid.replaceChildren();
+    els.groupGlyphPager.hidden = true;
+    return;
+  }
+  els.groupGlyphSection.hidden = false;
+  const pageCount = Math.max(1, Math.ceil(group.count / GROUP_GLYPH_PAGE_SIZE));
+  const anchor = `${group.name}\u0000${state.selected.index}`;
+  if (state.groupGlyphAnchor !== anchor) {
+    state.groupGlyphAnchor = anchor;
+    state.groupGlyphPage = Math.floor(state.selected.index / GROUP_GLYPH_PAGE_SIZE);
+  }
+  state.groupGlyphPage = Math.max(0, Math.min(pageCount - 1, state.groupGlyphPage));
+  const page = state.groupGlyphPage;
+  const start = page * GROUP_GLYPH_PAGE_SIZE;
+  const end = Math.min(group.count, start + GROUP_GLYPH_PAGE_SIZE);
+  els.groupGlyphGrid.replaceChildren();
+  if (!state.view.groupGridCollapsed) {
+    for (let index = start; index < end; index += 1) {
+      const result = state.renderer.renderGlyph(group.name, index);
+      const thumb = el("canvas");
+      fitImageToCanvas(thumb, result.image, 28);
+      const tile = el("button", {
+        class: `group-glyph-tile${state.selected.index === index ? " selected" : ""}`,
+        type: "button",
+        title: `${group.name}[${index}]`,
+        onclick: () => selectGlyph(group.name, index, { keepContext: true }),
+      }, thumb, el("span", { class: "group-glyph-index", text: String(index) }));
+      if (result.errors.length) {
+        tile.classList.add("has-error");
+        tile.title = result.errors[0].message;
+      }
+      els.groupGlyphGrid.append(tile);
+    }
+  }
+  els.groupGlyphPager.hidden = state.view.groupGridCollapsed || pageCount <= 1;
+  els.groupGlyphPrev.disabled = page <= 0;
+  els.groupGlyphNext.disabled = page >= pageCount - 1;
+  els.groupGlyphPage.textContent = `${page + 1} / ${pageCount}`;
+}
+
 function renderGroupInfo() {
   const group = currentGroup();
   els.groupDetail.replaceChildren();
@@ -1095,6 +1132,9 @@ function renderGroupInfo() {
   if (!group || !state.selected) {
     els.groupDetail.textContent = t("group.none");
     els.groupIndexControls.hidden = true;
+    els.groupGlyphSection.hidden = true;
+    els.groupGlyphGrid.replaceChildren();
+    els.groupGlyphPager.hidden = true;
     els.childStrip.replaceChildren();
     return;
   }
@@ -1123,6 +1163,7 @@ function renderGroupInfo() {
   } else {
     els.textureInfo.append(el("div", { class: "texture-state composite", text: t("group.noTexture") }));
   }
+  renderGroupGlyphGrid(group);
 
   const children = new Map();
   for (let importIndex = 0; importIndex < group.imports.length; importIndex += 1) {
@@ -2055,7 +2096,16 @@ function bindEvents() {
   els.toggleGroupGrid.addEventListener("click", () => {
     state.view.groupGridCollapsed = !state.view.groupGridCollapsed;
     applyGridVisibility();
+    if (!state.view.groupGridCollapsed) renderGroupGlyphGrid(currentGroup());
     scheduleViewSave();
+  });
+  els.groupGlyphPrev.addEventListener("click", () => {
+    state.groupGlyphPage = Math.max(0, state.groupGlyphPage - 1);
+    renderGroupGlyphGrid(currentGroup());
+  });
+  els.groupGlyphNext.addEventListener("click", () => {
+    state.groupGlyphPage += 1;
+    renderGroupGlyphGrid(currentGroup());
   });
   els.groupSearch.addEventListener("input", renderNavigator);
   for (const input of document.querySelectorAll("[data-usage-search]")) {

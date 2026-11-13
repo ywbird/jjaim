@@ -150,16 +150,18 @@ try {
   assert.equal(await page.$eval("#grid-toggle", (node) => getComputedStyle(node).borderRadius), "0px");
   assert.equal(await page.$eval("#grid-toggle", (node) => getComputedStyle(node).appearance), "none");
   assert.notEqual(await page.$eval("#grid-toggle", (node) => getComputedStyle(node).backgroundImage), "none");
-  assert.ok((await page.$$eval("#group-list .group-tile", (nodes) => nodes.length)) > 0);
-  assert.ok((await page.$$eval("#group-list .group-tile canvas", (nodes) => nodes.length)) > 0);
-  assert.equal(await page.evaluate(() => document.querySelector("#inspector").contains(document.querySelector("#group-list"))), true);
+  assert.ok((await page.$$eval("#group-list .group-item", (nodes) => nodes.length)) > 0);
+  assert.ok((await page.$$eval("#group-glyph-grid .group-glyph-tile", (nodes) => nodes.length)) > 0);
+  assert.ok((await page.$$eval("#group-glyph-grid .group-glyph-tile canvas", (nodes) => nodes.length)) > 0);
+  assert.equal(await page.evaluate(() => document.querySelector("#navigator").contains(document.querySelector("#group-list"))), true);
+  assert.equal(await page.evaluate(() => document.querySelector("#inspector").contains(document.querySelector("#group-glyph-grid"))), true);
   assert.equal(await page.evaluate(() => document.querySelector("#navigator").contains(document.querySelector("#text-preview"))), true);
-  assert.equal(await page.evaluate(() => Boolean(document.querySelector("#group-list").compareDocumentPosition(document.querySelector("#child-info")) & Node.DOCUMENT_POSITION_FOLLOWING)), true);
+  assert.equal(await page.evaluate(() => Boolean(document.querySelector("#group-glyph-grid").compareDocumentPosition(document.querySelector("#child-info")) & Node.DOCUMENT_POSITION_FOLLOWING)), true);
   await page.click("#toggle-group-grid");
-  assert.equal(await page.$eval("#group-list", (node) => node.hidden), true);
+  assert.equal(await page.$eval("#group-glyph-grid", (node) => node.hidden), true);
   assert.equal(await page.$eval("#toggle-group-grid", (node) => node.getAttribute("aria-expanded")), "false");
   await page.click("#toggle-group-grid");
-  assert.equal(await page.$eval("#group-list", (node) => node.hidden), false);
+  assert.equal(await page.$eval("#group-glyph-grid", (node) => node.hidden), false);
   assert.equal(await page.$eval("#toggle-character-grid .collapse-label", (node) => node.textContent), "접기");
   await page.click("#toggle-character-grid");
   assert.equal(await page.$eval("#character-grid", (node) => node.hidden), true);
@@ -195,10 +197,10 @@ try {
   assert.equal(await page.$eval("#open-declaration", (node) => node.textContent), "Open declaration");
   await page.click("#lang-toggle");
   assert.equal(await page.evaluate(() => document.documentElement.lang), "ko");
-  const groupLight = await page.$eval("#group-list .group-tile canvas", (canvas) => canvas.toDataURL());
+  const groupLight = await page.$eval("#group-glyph-grid .group-glyph-tile canvas", (canvas) => canvas.toDataURL());
   await page.click("#theme-toggle");
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "dark");
-  await page.waitForFunction((before) => document.querySelector("#group-list .group-tile canvas").toDataURL() !== before, {}, groupLight);
+  await page.waitForFunction((before) => document.querySelector("#group-glyph-grid .group-glyph-tile canvas").toDataURL() !== before, {}, groupLight);
   assert.equal(await page.$eval("#board", (canvas) => {
     const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
     for (let index = 0; index < data.length; index += 4) {
@@ -287,9 +289,9 @@ try {
   await page.reload({ waitUntil: "networkidle0" });
   await page.waitForFunction(() => window.__editor?.state.workspace?.fileName === "browser.json");
   assert.equal(await page.evaluate(() => window.__editor.state.workspace.history.headId), head);
-  assert.equal(await page.$eval("#group-list", (node) => node.hidden), true);
+  assert.equal(await page.$eval("#group-glyph-grid", (node) => node.hidden), true);
   await page.click("#toggle-group-grid");
-  assert.equal(await page.$eval("#group-list", (node) => node.hidden), false);
+  assert.equal(await page.$eval("#group-glyph-grid", (node) => node.hidden), false);
   await page.click("#open-works");
   await page.waitForFunction(() => document.querySelectorAll("#works-list .list-item").length === 1);
   await page.evaluate(() => {
@@ -318,6 +320,12 @@ try {
   assert.equal(await page.evaluate(() => window.__editor.state.context?.group), "hangul_syllables");
   assert.equal(await page.$eval("#editing-badge", (node) => node.textContent), "합성 전용 · 읽기 전용");
   assert.equal(await page.$eval('[data-tool="pencil"]', (node) => node.disabled), true);
+  assert.equal(await page.$$eval("#group-glyph-grid .group-glyph-tile", (nodes) => nodes.length), 32);
+  assert.equal(await page.$eval("#group-glyph-pager", (node) => node.hidden), false);
+  assert.equal(await page.$eval("#group-glyph-page", (node) => node.textContent), "1 / 350");
+  await page.click("#group-glyph-next");
+  assert.equal(await page.$eval("#group-glyph-page", (node) => node.textContent), "2 / 350");
+  await page.click("#group-glyph-prev");
   const childLight = await page.$eval("#child-strip .child-chip canvas", (canvas) => canvas.toDataURL());
   const inspectorLight = await page.$eval("#child-info canvas", (canvas) => canvas.toDataURL());
   await page.click("#theme-toggle");
