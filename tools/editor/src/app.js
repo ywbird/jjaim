@@ -589,15 +589,14 @@ function renderNavigator() {
   }
 }
 
-function selectGlyph(group, index, { codepoint = null, keepContext = false } = {}) {
+function selectGlyph(group, index, { codepoint = null } = {}) {
   if (!state.workspace) return;
   cancelDraft();
   const model = state.workspace.declaration.groups.get(group);
   if (!model) return;
   const safeIndex = Math.max(0, Math.min(model.count - 1, Number(index) || 0));
   state.selected = { group, index: safeIndex };
-  if (codepoint != null) state.context = { codepoint, group, index: safeIndex };
-  else if (!keepContext) state.context = null;
+  state.context = codepoint != null ? { codepoint, group, index: safeIndex } : null;
   state.selection = null;
   state.historyPreview = null;
   refreshAll();
