@@ -9,6 +9,8 @@
 
 ## 피드백
 
+- [x] 문자 셋 또는 부품 사용처에서 글꼴을 선택했을때 context row와 그리는 공간의 글꼴이 교체되지 않음. 현재는 context row의 현재 직계 자식 글리프 목록 표시만 선택된 글꼴의 직계 글리프 목록으로 교체됨. — `3c3ac9f`, browser canvas test
+
 - [x] 다크모드일때 비트맵 글꼴은 하얀색이도록 — `018b330`, browser canvas test
 - [x] 왼쪽 pane을 접으면 그리는 공간까지 사라지면 안됨. — `018b330`, explicit grid column + viewport test
 - [x] 캐릭터 셋의 글꼴들의 aspect ratio는 유지. — `018b330`, fixed-box fit
