@@ -8,6 +8,7 @@ import {
   affectedCharacters,
   affectedGroupsForRect,
   buildLayerTree,
+  diffImages,
   flattenLayers,
   sameImage,
 } from "../src/compose.js";
@@ -149,6 +150,14 @@ test("shared physical image affects both extraction groups and their characters"
   const groups = affectedGroupsForRect(declaration, assets, "sheet.png", { x: 1, y: 0, width: 1, height: 1 });
   assert.deepEqual(groups.map((g) => g.group).sort(), ["g", "h"]);
   assert.deepEqual(affectedCharacters(declaration, assets, new Map([["sheet.png", [{ x: 1, y: 0, width: 1, height: 1 }]]])), [0x41, 0x42]);
+});
+
+test("pixel diff classifies added, removed, and changed while ignoring hidden transparent RGB", () => {
+  const before = img(3, 1, [rgba(9, 9, 9, 0), rgba(0, 0, 0), rgba(10, 20, 30, 128)]);
+  const after = img(3, 1, [rgba(0, 0, 0), rgba(7, 7, 7, 0), rgba(10, 20, 31, 128)]);
+  const result = diffImages(before, after);
+  assert.deepEqual(result.counts, { added: 1, removed: 1, changed: 1, same: 0 });
+  assert.deepEqual(result.rows, ["ARC"]);
 });
 
 test("actual changes exclude structurally referenced but clipped glyphs", () => {
