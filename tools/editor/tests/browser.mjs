@@ -266,6 +266,17 @@ try {
     });
     await page.waitForFunction(() => window.__editor.state.shadow.size === 32);
     assert.equal(await page.$eval("#shadow-size-value", (node) => node.textContent), "32px");
+    assert.deepEqual(await page.$eval("#shadow-size", (input) => {
+      const row = input.closest(".shadow-row");
+      const label = row.querySelector("label").getBoundingClientRect();
+      const slider = input.getBoundingClientRect();
+      const output = row.querySelector("output").getBoundingClientRect();
+      return {
+        labelBeforeSlider: label.right <= slider.left,
+        sliderBeforeOutput: slider.right <= output.left,
+        sameRow: Math.abs((label.top + label.bottom) / 2 - (slider.top + slider.bottom) / 2) < 1,
+      };
+    }), { labelBeforeSlider: true, sliderBeforeOutput: true, sameRow: true });
     await page.click("#shadow-toggle");
     assert.equal(await page.evaluate(() => window.__editor.state.shadow.visible), true);
     const shadowPixels = await page.$eval("#board", (canvas) => {

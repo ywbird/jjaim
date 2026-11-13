@@ -660,10 +660,10 @@ dialog::backdrop { background: rgba(16, 20, 26, 0.5); }
 #compare-panel select { min-width: 0; flex: 1 1 120px; }
 #compare-panel input[type="range"] { flex: 1 1 100px; min-width: 80px; }
 .shadow-controls { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-.shadow-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; }
-.shadow-row label { color: var(--muted); font-size: 11.5px; }
-.shadow-row output { color: var(--muted); font-family: var(--font-mono); font-size: 10.5px; }
-.shadow-row input[type="range"] { grid-column: 1 / -1; width: 100%; min-width: 0; }
+.shadow-row { display: grid; grid-template-columns: auto minmax(0, 1fr) 48px; gap: 8px; align-items: center; }
+.shadow-row label { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+.shadow-row output { color: var(--muted); font-family: var(--font-mono); font-size: 10.5px; text-align: right; white-space: nowrap; }
+.shadow-row input[type="range"] { width: 100%; min-width: 0; }
 .settings-field { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
 .settings-field > label { color: var(--muted); font-size: 12px; }
 .settings-field > select { width: 100%; }
