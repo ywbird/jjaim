@@ -148,6 +148,8 @@ try {
   assert.equal(await page.$("#possible-impact"), null);
   assert.equal(await page.$("#actual-impact"), null);
   assert.equal(await page.$eval("#grid-toggle", (node) => getComputedStyle(node).borderRadius), "0px");
+  assert.equal(await page.$eval("#grid-toggle", (node) => getComputedStyle(node).appearance), "none");
+  assert.notEqual(await page.$eval("#grid-toggle", (node) => getComputedStyle(node).backgroundImage), "none");
   await page.waitForFunction(() => document.querySelector("#text-preview").width > 1);
   const inlinePreview = await page.$eval("#text-preview", (canvas) => {
     const rect = canvas.getBoundingClientRect();
@@ -292,6 +294,14 @@ try {
   assert.equal(await page.evaluate(() => window.__editor.state.context?.group), "hangul_syllables");
   assert.equal(await page.$eval("#editing-badge", (node) => node.textContent), "합성 전용 · 읽기 전용");
   assert.equal(await page.$eval('[data-tool="pencil"]', (node) => node.disabled), true);
+  const childLight = await page.$eval("#child-strip .child-chip canvas", (canvas) => canvas.toDataURL());
+  const inspectorLight = await page.$eval("#child-info canvas", (canvas) => canvas.toDataURL());
+  await page.click("#theme-toggle");
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "dark");
+  await page.waitForFunction((before) => document.querySelector("#child-strip .child-chip canvas").toDataURL() !== before, {}, childLight);
+  assert.notEqual(await page.$eval("#child-info canvas", (canvas) => canvas.toDataURL()), inspectorLight);
+  await page.click("#theme-toggle");
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "light");
   assert.notEqual(await page.$eval("#context", (canvas) => canvas.toDataURL()), beforeContext);
   assert.notEqual(await page.$eval("#board", (canvas) => canvas.toDataURL()), beforeBoard);
   assert.equal(await page.$$eval("#child-info .list-item", (nodes) => nodes.length), 2);

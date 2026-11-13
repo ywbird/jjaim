@@ -270,6 +270,11 @@ function applyTheme(theme) {
   }
   if (state.workspace) {
     renderNavigator();
+    if (state.selected) {
+      renderGroupInfo();
+      renderChildStrip(currentGroup(), state.selected.index);
+    }
+    renderHistory();
     drawBoard();
     drawContext();
     drawTextPreview();
