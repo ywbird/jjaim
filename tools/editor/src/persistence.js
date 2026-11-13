@@ -198,7 +198,7 @@ export class WorkspaceLock {
     this.timer = null;
   }
 
-  acquire() {
+  tryAcquire() {
     try {
       const raw = localStorage.getItem(this.key);
       const now = Date.now();
@@ -207,16 +207,21 @@ export class WorkspaceLock {
         if (lock.tabId !== this.tabId && lock.expires > now) return false;
       }
       this.write();
-      this.timer = setInterval(() => this.write(), 5000);
       return true;
     } catch {
       return true;
     }
   }
 
+  acquire() {
+    if (!this.tryAcquire()) return false;
+    this.timer = setInterval(() => this.write(), 10000);
+    return true;
+  }
+
   write() {
     try {
-      localStorage.setItem(this.key, JSON.stringify({ tabId: this.tabId, expires: Date.now() + 15000 }));
+      localStorage.setItem(this.key, JSON.stringify({ tabId: this.tabId, expires: Date.now() + 120000 }));
     } catch {
       // A storage failure must not block an otherwise usable temporary session.
     }
