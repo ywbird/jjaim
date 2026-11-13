@@ -9,6 +9,8 @@
 
 ## 피드백
 
+- [ ] design-taste-frontend 사용
+
 - [x] 스펙 이름이 JJaim으로 정해졌으므로 제목을 JJaim Texture Editor / JJaim 텍스쳐 편집기 — `b04a82a`, title browser test
 
 - [x] 그리드도 좀 얇음. 좀 더 두껍게 — `44f8ceb`, 2px grid browser pixel test
