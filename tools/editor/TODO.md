@@ -9,6 +9,9 @@
 
 ## 피드백
 
+- [x] dark/light 테마 바꿀때, 자동으로 직계 글리프 목록의 글리프 색이 변하지 않음. dark->light 이면 글꼴이 흰색으로 남는식. 한번 클릭 해주거나 다른 글꼴로 바꿔서 업데이트 되게 하면 그제서야 바뀜. — `ed8ea3d`, browser child preview theme test
+- [x] checkbox still have rounded corners. 보통 appearance: none; 한 다음에 after나 before pseudo element로 하던데 — `ed8ea3d`, appearance:none + square check test
+
 - [x] 예문 미리보기에 1,2,4 배율이 있는데, aspect ratio 보전이 안돼서, 높이만 남고 좌우로 줄어듦. 그냥 기본 anti aliasing 서 너비 100%로 하고, 누르면 popup 뜨는 방식으로. — `5c90504`, browser ratio + popup test
 - [x] border radius 0으로 할때 checkbox 도 마찬가지로 — `5c90504`, checkbox radius test
 
