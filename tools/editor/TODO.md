@@ -9,6 +9,9 @@
 
 ## 피드백
 
+- [x] 예문 미리보기에 1,2,4 배율이 있는데, aspect ratio 보전이 안돼서, 높이만 남고 좌우로 줄어듦. 그냥 기본 anti aliasing 서 너비 100%로 하고, 누르면 popup 뜨는 방식으로. — `5c90504`, browser ratio + popup test
+- [x] border radius 0으로 할때 checkbox 도 마찬가지로 — `5c90504`, checkbox radius test
+
 - [x] UI에서 border radius 전부 0으로 하자 — `112f595`, all border-radius 0
 - [x] 선택 영역이 움직일때 드래그 도중에는 선택 박스가 움직이지 않음. 드롭을 해야 박스가 움직임. 드래그 도중에도 박스가 움직여야함. — `e9edfdb`, browser drag test
 - [x] 선택 영역이 전체 영역 밖으로 나갈 수 있어야 함. 밖에 나간건 trim되어야함. — `e9edfdb`, unit + browser trim test
