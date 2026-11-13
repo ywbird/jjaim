@@ -9,7 +9,7 @@
 
 ## 피드백
 
-- [ ] design-taste-frontend 사용
+- [x] design-taste-frontend 사용 — `0b59993`, before/after captures + Chromium/Firefox tests
 
 - [x] 스펙 이름이 JJaim으로 정해졌으므로 제목을 JJaim Texture Editor / JJaim 텍스쳐 편집기 — `b04a82a`, title browser test
 
