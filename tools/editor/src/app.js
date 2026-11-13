@@ -66,6 +66,8 @@ const state = {
   keyMove: null,
   space: false,
   storage: { reading: false, blocked: false, temp: false, readOnly: false, lock: null },
+  saveQueue: Promise.resolve(),
+  saveToken: 0,
   historyPreview: null,
   impact: null,
   impactToken: 0,
@@ -369,16 +371,26 @@ async function persist(reason = "edit") {
   state.workspace.font = state.font
     ? { name: state.font.name, family: state.font.family, bytes: state.font.bytes, settings: { ...state.shadow } }
     : state.workspace.font ?? null;
+  const token = ++state.saveToken;
+  const workspace = state.workspace;
   setStatus("저장 중…", "saving");
-  try {
-    await saveWorkspace(state.workspace);
-    state.storage.blocked = false;
-    setStatus("브라우저에 저장됨", "saved");
-  } catch (error) {
-    state.storage.blocked = true;
-    setStatus(`저장 실패: ${error.message}`, "failed");
-    showSaveFailure();
-  }
+  state.saveQueue = state.saveQueue
+    .then(() => {
+      if (workspace.deleted) return null;
+      return saveWorkspace(workspace);
+    })
+    .then(() => {
+      if (token !== state.saveToken) return;
+      state.storage.blocked = false;
+      setStatus("브라우저에 저장됨", "saved");
+    })
+    .catch((error) => {
+      if (token !== state.saveToken) return;
+      state.storage.blocked = true;
+      setStatus(`저장 실패: ${error.message}`, "failed");
+      showSaveFailure();
+    });
+  await state.saveQueue;
 }
 
 function showSaveFailure() {
@@ -507,6 +519,7 @@ function selectGlyph(group, index, { codepoint = null, keepContext = false } = {
   state.selection = null;
   state.historyPreview = null;
   refreshAll();
+  scheduleViewSave("selection");
 }
 
 // ---------- board ----------
@@ -1052,6 +1065,12 @@ function renderBaseSelects() {
 // ---------- text ----------
 
 let textTimer = null;
+let viewSaveTimer = null;
+function scheduleViewSave(reason = "view") {
+  clearTimeout(viewSaveTimer);
+  viewSaveTimer = setTimeout(() => persist(reason), 300);
+}
+
 function drawTextPreview() {
   if (!state.workspace) return;
   try {
@@ -1535,15 +1554,18 @@ async function openWorksList() {
         el("button", { class: "small danger", text: "삭제", onclick: async () => {
           const ok = await confirmAction(`"${row.name}" 작업을 삭제할까요? 이 작업의 선언/PNG/이력만 삭제됩니다.`);
           if (!ok) return;
+          const deleting = state.workspace?.id === row.id ? state.workspace : null;
+          if (deleting) deleting.deleted = true;
           try {
             await deleteWorkspace(row.id);
-            if (state.workspace?.id === row.id) {
+            if (deleting) {
               state.workspace = null;
               els.editor.hidden = true;
               els.emptyState.hidden = false;
             }
             openWorksList();
           } catch (error) {
+            if (deleting) deleting.deleted = false;
             setStatus(error.message, "failed");
           }
         } }),
@@ -1633,27 +1655,31 @@ function bindEvents() {
     state.set.search = "";
     els.characterSearch.value = "";
     renderNavigator();
+    scheduleViewSave();
   });
   els.mappedOnly.addEventListener("change", () => {
     state.set.mappedOnly = els.mappedOnly.checked;
     state.set.page = 0;
     renderNavigator();
+    scheduleViewSave();
   });
   els.characterSearch.addEventListener("input", () => {
     state.set.search = els.characterSearch.value;
     state.set.page = 0;
     renderNavigator();
+    scheduleViewSave();
   });
   els.pageSize.addEventListener("change", () => {
     state.set.pageSize = Number(els.pageSize.value);
     state.set.page = 0;
     renderNavigator();
+    scheduleViewSave();
   });
-  els.pageFirst.addEventListener("click", () => { state.set.page = 0; renderNavigator(); });
-  els.pagePrev.addEventListener("click", () => { state.set.page = Math.max(0, state.set.page - 1); renderNavigator(); });
-  els.pageNext.addEventListener("click", () => { state.set.page += 1; renderNavigator(); });
-  els.pageLast.addEventListener("click", () => { state.set.page = 1e9; renderNavigator(); });
-  els.pageInput.addEventListener("change", () => { state.set.page = Math.max(0, Number(els.pageInput.value) - 1); renderNavigator(); });
+  els.pageFirst.addEventListener("click", () => { state.set.page = 0; renderNavigator(); scheduleViewSave(); });
+  els.pagePrev.addEventListener("click", () => { state.set.page = Math.max(0, state.set.page - 1); renderNavigator(); scheduleViewSave(); });
+  els.pageNext.addEventListener("click", () => { state.set.page += 1; renderNavigator(); scheduleViewSave(); });
+  els.pageLast.addEventListener("click", () => { state.set.page = 1e9; renderNavigator(); scheduleViewSave(); });
+  els.pageInput.addEventListener("change", () => { state.set.page = Math.max(0, Number(els.pageInput.value) - 1); renderNavigator(); scheduleViewSave(); });
   els.groupSearch.addEventListener("input", renderNavigator);
   for (const input of document.querySelectorAll("[data-usage-search]")) {
     input.addEventListener("input", () => {

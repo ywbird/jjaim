@@ -3,7 +3,7 @@ import test from "node:test";
 import { parseDeclaration } from "../src/declaration.js";
 import { AssetStore } from "../src/assets.js";
 import { History } from "../src/history.js";
-import { deserializeWorkspace, serializeWorkspace } from "../src/persistence.js";
+import { deserializeWorkspace, saveWorkspace, serializeWorkspace } from "../src/persistence.js";
 
 test("workspace serialization keeps declaration, original pixels, and full history", () => {
   const text = JSON.stringify({
@@ -33,4 +33,8 @@ test("workspace serialization keeps declaration, original pixels, and full histo
   assert.deepEqual([...restored.assets.get("sheet.png").current], [0, 0, 0, 255]);
   assert.deepEqual([...restored.assets.get("sheet.png").original], [0, 0, 0, 0]);
   assert.throws(() => deserializeWorkspace({ schemaVersion: 99 }), /스키마/);
+});
+
+test("storage failures are reported instead of silently succeeding", async () => {
+  await assert.rejects(saveWorkspace({}), /IndexedDB/);
 });
