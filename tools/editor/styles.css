@@ -521,7 +521,45 @@ button.icon-btn.labeled { width: auto; padding: 0 8px; gap: 5px; }
 #page-size { width: 76px; margin-left: auto; }
 
 .usage-search { width: 100%; margin-bottom: 6px; }
+.field-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+.field-heading label { margin: 0; color: var(--muted); font-size: 12px; }
+.collapse-btn {
+  width: 26px;
+  height: 26px;
+  min-height: 26px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+.collapse-btn:hover:not(:disabled) { color: var(--accent); }
+.collapse-btn .icon { width: 15px; height: 15px; transition: transform 0.12s ease; }
+.collapse-btn[aria-expanded="false"] .icon { transform: rotate(-90deg); }
 .group-list, .list { display: flex; flex-direction: column; gap: 3px; max-height: 250px; overflow: auto; }
+.group-list.group-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+  align-content: start;
+  gap: 4px;
+  max-height: 300px;
+}
+.group-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-height: 0;
+  padding: 5px 4px 4px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  text-align: center;
+}
+.group-tile:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+.group-tile.selected { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.group-tile.has-error { border-color: var(--danger); }
+.group-tile canvas { display: block; image-rendering: pixelated; max-width: 100%; }
+.group-tile .group-name { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; font-weight: 600; color: var(--text); }
+.group-tile .group-meta { font-family: var(--font-mono); font-size: 9px; color: var(--muted); white-space: nowrap; }
 .group-item, .list-item {
   text-align: left;
   border: 1px solid transparent;

@@ -62,6 +62,8 @@ const state = {
     childFilter: true,
     navHidden: false,
     inspectorHidden: false,
+    characterGridCollapsed: false,
+    groupGridCollapsed: false,
     diff: false,
     onion: false,
     diffBase: "r0",
@@ -116,6 +118,8 @@ const els = {
   setSummary: $("#set-summary"),
   characterSearch: $("#character-search"),
   characterGrid: $("#character-grid"),
+  toggleCharacterGrid: $("#toggle-character-grid"),
+  pageControls: $("#page-controls"),
   pageFirst: $("#page-first"),
   pagePrev: $("#page-prev"),
   pageInput: $("#page-input"),
@@ -127,6 +131,7 @@ const els = {
   globalError: $("#global-error"),
   groupSearch: $("#group-search"),
   groupList: $("#group-list"),
+  toggleGroupGrid: $("#toggle-group-grid"),
   toolbar: $("#toolbar"),
   zoom: $("#zoom"),
   gridToggle: $("#grid-toggle"),
@@ -368,6 +373,8 @@ function defaultView(declaration) {
     childFilter: true,
     navHidden: false,
     inspectorHidden: false,
+    characterGridCollapsed: false,
+    groupGridCollapsed: false,
     diff: false,
     onion: false,
     diffBase: "r0",
@@ -586,8 +593,19 @@ function navigatorCharacters() {
   return items;
 }
 
+function applyGridVisibility() {
+  const characterCollapsed = Boolean(state.view.characterGridCollapsed);
+  const groupCollapsed = Boolean(state.view.groupGridCollapsed);
+  els.characterGrid.hidden = characterCollapsed;
+  els.pageControls.hidden = characterCollapsed;
+  els.toggleCharacterGrid.setAttribute("aria-expanded", String(!characterCollapsed));
+  els.groupList.hidden = groupCollapsed;
+  els.toggleGroupGrid.setAttribute("aria-expanded", String(!groupCollapsed));
+}
+
 function renderNavigator() {
   if (!state.workspace) return;
+  applyGridVisibility();
   renderSetSelect();
   const items = navigatorCharacters();
   const page = paginate(items, state.set.page, state.set.pageSize);
@@ -639,11 +657,28 @@ function renderNavigator() {
   const query = els.groupSearch.value.trim();
   for (const group of state.workspace.declaration.groups.values()) {
     if (query && !group.name.includes(query)) continue;
+    const selected = state.selected?.group === group.name;
+    const previewIndex = selected ? state.selected.index : 0;
     const item = el("button", {
-      class: `group-item${state.selected?.group === group.name ? " selected" : ""}`,
+      class: `group-tile${selected ? " selected" : ""}`,
       type: "button",
+      title: `${group.name} · ${group.count} · ${group.width}×${group.height}`,
       onclick: () => selectGlyph(group.name, Math.min(state.selected?.index ?? 0, group.count - 1), { keepContext: false }),
-    }, el("strong", { text: group.name }), el("small", { text: ` · ${group.count} · ${group.width}×${group.height}` }));
+    });
+    if (group.count > 0) {
+      const result = state.renderer.renderGlyph(group.name, Math.min(group.count - 1, previewIndex));
+      const thumb = el("canvas");
+      fitImageToCanvas(thumb, result.image, 52);
+      if (result.errors.length) {
+        item.classList.add("has-error");
+        thumb.title = result.errors[0].message;
+      }
+      item.append(thumb);
+    }
+    item.append(
+      el("span", { class: "group-name", text: group.name }),
+      el("span", { class: "group-meta", text: `${group.count} · ${group.width}×${group.height}` }),
+    );
     els.groupList.append(item);
   }
 }
@@ -2010,6 +2045,16 @@ function bindEvents() {
   els.pageNext.addEventListener("click", () => { state.set.page += 1; renderNavigator(); scheduleViewSave(); });
   els.pageLast.addEventListener("click", () => { state.set.page = 1e9; renderNavigator(); scheduleViewSave(); });
   els.pageInput.addEventListener("change", () => { state.set.page = Math.max(0, Number(els.pageInput.value) - 1); renderNavigator(); scheduleViewSave(); });
+  els.toggleCharacterGrid.addEventListener("click", () => {
+    state.view.characterGridCollapsed = !state.view.characterGridCollapsed;
+    applyGridVisibility();
+    scheduleViewSave();
+  });
+  els.toggleGroupGrid.addEventListener("click", () => {
+    state.view.groupGridCollapsed = !state.view.groupGridCollapsed;
+    applyGridVisibility();
+    scheduleViewSave();
+  });
   els.groupSearch.addEventListener("input", renderNavigator);
   for (const input of document.querySelectorAll("[data-usage-search]")) {
     input.addEventListener("input", () => {

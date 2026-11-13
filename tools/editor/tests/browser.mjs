@@ -150,6 +150,18 @@ try {
   assert.equal(await page.$eval("#grid-toggle", (node) => getComputedStyle(node).borderRadius), "0px");
   assert.equal(await page.$eval("#grid-toggle", (node) => getComputedStyle(node).appearance), "none");
   assert.notEqual(await page.$eval("#grid-toggle", (node) => getComputedStyle(node).backgroundImage), "none");
+  assert.ok((await page.$$eval("#group-list .group-tile", (nodes) => nodes.length)) > 0);
+  assert.ok((await page.$$eval("#group-list .group-tile canvas", (nodes) => nodes.length)) > 0);
+  await page.click("#toggle-group-grid");
+  assert.equal(await page.$eval("#group-list", (node) => node.hidden), true);
+  assert.equal(await page.$eval("#toggle-group-grid", (node) => node.getAttribute("aria-expanded")), "false");
+  await page.click("#toggle-group-grid");
+  assert.equal(await page.$eval("#group-list", (node) => node.hidden), false);
+  await page.click("#toggle-character-grid");
+  assert.equal(await page.$eval("#character-grid", (node) => node.hidden), true);
+  assert.equal(await page.$eval("#page-controls", (node) => node.hidden), true);
+  await page.click("#toggle-character-grid");
+  assert.equal(await page.$eval("#character-grid", (node) => node.hidden), false);
   await page.waitForFunction(() => document.querySelector("#text-preview").width > 1);
   const inlinePreview = await page.$eval("#text-preview", (canvas) => {
     const rect = canvas.getBoundingClientRect();
@@ -178,8 +190,10 @@ try {
   assert.equal(await page.$eval("#open-declaration", (node) => node.textContent), "Open declaration");
   await page.click("#lang-toggle");
   assert.equal(await page.evaluate(() => document.documentElement.lang), "ko");
+  const groupLight = await page.$eval("#group-list .group-tile canvas", (canvas) => canvas.toDataURL());
   await page.click("#theme-toggle");
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "dark");
+  await page.waitForFunction((before) => document.querySelector("#group-list .group-tile canvas").toDataURL() !== before, {}, groupLight);
   assert.equal(await page.$eval("#board", (canvas) => {
     const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
     for (let index = 0; index < data.length; index += 4) {
@@ -255,6 +269,8 @@ try {
   assert.equal(await page.$eval('[data-tool="move"]', (node) => node.classList.contains("active")), true);
 
   const head = await page.evaluate(() => window.__editor.state.workspace.history.headId);
+  await page.click("#toggle-group-grid");
+  await page.waitForFunction(() => window.__editor.state.workspace.view.groupGridCollapsed === true);
   await page.click("#file-menu-button");
   await page.click("#export-project");
   const projectPath = await waitDownload(downloadDir, "Browser.jjaim");
@@ -266,6 +282,9 @@ try {
   await page.reload({ waitUntil: "networkidle0" });
   await page.waitForFunction(() => window.__editor?.state.workspace?.fileName === "browser.json");
   assert.equal(await page.evaluate(() => window.__editor.state.workspace.history.headId), head);
+  assert.equal(await page.$eval("#group-list", (node) => node.hidden), true);
+  await page.click("#toggle-group-grid");
+  assert.equal(await page.$eval("#group-list", (node) => node.hidden), false);
   await page.click("#open-works");
   await page.waitForFunction(() => document.querySelectorAll("#works-list .list-item").length === 1);
   await page.evaluate(() => {

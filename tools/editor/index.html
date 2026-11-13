@@ -17,6 +17,7 @@
         <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
         <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"/></symbol>
         <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></symbol>
+        <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9.5 6 6 6-6"/></symbol>
         <symbol id="i-skip-left" viewBox="0 0 24 24"><path d="m11 6-6 6 6 6M19 6l-6 6 6 6"/></symbol>
         <symbol id="i-skip-right" viewBox="0 0 24 24"><path d="m4 6 6 6-6 6M13 6l6 6-6 6"/></symbol>
         <symbol id="i-pencil" viewBox="0 0 24 24"><path d="m5 19 1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L9 18l-4 1ZM14.5 6.5l3 3"/></symbol>
@@ -75,7 +76,12 @@
     <main id="layout">
       <aside id="navigator" class="panel">
         <section class="panel-section">
-          <label for="set-select" data-i18n="nav.characterSet">문자 셋</label>
+          <div class="field-heading">
+            <label for="set-select" data-i18n="nav.characterSet">문자 셋</label>
+            <button id="toggle-character-grid" class="collapse-btn" type="button" data-i18n-title="nav.characterGridToggle" aria-label="문자 그리드 접기/펼치기" aria-expanded="true">
+              <svg class="icon"><use href="#i-chevron-down"/></svg>
+            </button>
+          </div>
           <select id="set-select"></select>
           <label class="check"><input id="mapped-only" type="checkbox" checked> <span data-i18n="nav.mappedOnly">매핑된 문자만</span></label>
           <div id="set-summary" class="muted" data-i18n="nav.openPrompt">선언을 여세요</div>
@@ -100,9 +106,14 @@
           <label for="global-search" data-i18n="nav.jump">정확한 이동</label>
           <input id="global-search" type="search" data-i18n-placeholder="nav.jumpPlaceholder" placeholder="U+AC00 또는 그룹명[0]">
           <div id="global-error" class="error-text"></div>
-          <label for="group-search" data-i18n="nav.groupSearch">그룹 이름 검색</label>
+          <div class="field-heading">
+            <label for="group-search" data-i18n="nav.groupSearch">그룹 이름 검색</label>
+            <button id="toggle-group-grid" class="collapse-btn" type="button" data-i18n-title="nav.groupGridToggle" aria-label="그룹 그리드 접기/펼치기" aria-expanded="true">
+              <svg class="icon"><use href="#i-chevron-down"/></svg>
+            </button>
+          </div>
           <input id="group-search" type="search" data-i18n-placeholder="nav.groupPlaceholder" placeholder="그룹 이름 일부">
-          <div id="group-list" class="group-list"></div>
+          <div id="group-list" class="group-list group-grid" data-i18n-title="nav.groupGridLabel" aria-label="그룹 미리보기"></div>
         </section>
       </aside>
 
