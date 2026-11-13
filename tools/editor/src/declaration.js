@@ -387,6 +387,9 @@ function expandAt(at) {
       sourceShift += combo[k] * axes[k].fromStride;
       targetShift += combo[k] * axes[k].toStride;
     }
+    if (!Number.isSafeInteger(sourceShift) || !Number.isSafeInteger(targetShift)) {
+      fail("$.groups", "반복 이동량이 안전한 정수 범위를 벗어났습니다");
+    }
     for (let j = 0; j < at.b - at.a; j += 1) {
       result.push({
         source: at.a + j + sourceShift,
@@ -410,6 +413,8 @@ function placementKey(placement) {
 
 export function parseDeclaration(text, { fileName = "declaration.json" } = {}) {
   if (typeof text !== "string") throw new DeclError("선언은 문자열이어야 합니다");
+  const sourceText = text;
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
   if (new TextEncoder().encode(text).length > LIMITS.declarationBytes) {
     throw new DeclError("선언 JSON이 8 MiB 한도를 넘습니다");
   }
@@ -572,7 +577,7 @@ export function parseDeclaration(text, { fileName = "declaration.json" } = {}) {
 
   return {
     fileName,
-    text,
+    text: sourceText,
     metadata,
     textureSets,
     groups,

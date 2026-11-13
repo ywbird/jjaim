@@ -105,12 +105,12 @@ export async function readZip(bytes, options = {}) {
     }
     const unixMode = (external >>> 16) & 0xffff;
     if ((versionMade >>> 8) === 3 && (unixMode & 0xf000) === 0xa000) throw new ZipError(`ZIP 심볼릭 링크는 지원하지 않습니다: ${name}`);
+    const normalized = normalizeLogicalPath(name);
     if (name.endsWith("/")) {
-      skipped.push(name);
+      skipped.push(normalized);
       offset += 46 + nameLength + extraLength + commentLength;
       continue;
     }
-    const normalized = normalizeLogicalPath(name);
     if (seen.has(normalized)) throw new ZipError(`ZIP 안에 정규화 후 중복된 경로가 있습니다: ${normalized}`);
     seen.add(normalized);
     if (!/\.png$/i.test(normalized)) {

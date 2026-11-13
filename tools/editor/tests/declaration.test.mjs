@@ -26,6 +26,13 @@ test("strict JSON rejects duplicates, unknown fields, and bad types", () => {
   assert.equal(parseDeclaration('{"groups":{"__proto__":{"size":[1,1],"count":1}}}').groups.has("__proto__"), true);
 });
 
+test("accepts a UTF-8 BOM without changing the stored declaration text", () => {
+  const text = '{"groups":{"a":{"size":[1,1],"count":1}}}';
+  const declaration = parseDeclaration(`\uFEFF${text}`);
+  assert.equal(declaration.text, `\uFEFF${text}`);
+  assert.equal(declaration.groups.get("a").count, 1);
+});
+
 test("accepts U+0000 and non-BMP codepoints without UTF-16 splitting", () => {
   const declaration = parseDeclaration(
     JSON.stringify({
