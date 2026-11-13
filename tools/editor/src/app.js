@@ -140,7 +140,6 @@ const els = {
   contextLabel: $("#context-label"),
   context: $("#context"),
   childStrip: $("#child-strip"),
-  layerList: $("#layer-list"),
   groupDetail: $("#group-detail"),
   groupIndexControls: $("#group-index-controls"),
   indexPrev: $("#index-prev"),
@@ -927,15 +926,50 @@ function drawShadow(ctx, zoom, target) {
 function renderChildStrip(group, index) {
   els.childStrip.replaceChildren();
   if (!group || index == null) return;
-  const placements = state.workspace.declaration.placement(group.name).get(index) ?? [];
+  const tree = buildLayerTree(state.workspace.declaration, group.name, index);
   const renderer = state.draft ? state.draft.previewRenderer : state.renderer;
-  for (const placement of placements) {
-    const item = el("button", {
-      class: "child-chip",
-      title: `${placement.child}[${placement.childIndex}]`,
-      onclick: () => selectGlyph(placement.child, placement.childIndex, { keepContext: true }),
-    }, glyphThumb(renderer.renderGlyph(placement.child, placement.childIndex).image, 28), `${placement.child}[${placement.childIndex}]`);
-    els.childStrip.append(item);
+  const contextWidth = els.context.clientWidth || 0;
+  const contextHeight = els.context.clientHeight || 0;
+  const box = Math.max(96, Math.min(220, Math.max(contextWidth, contextHeight)));
+  for (const placement of tree.root.children) {
+    const hidden = state.view.hidden.has ? state.view.hidden.has(placement.id) : state.view.hidden.includes(placement.id);
+    const tile = el("div", {
+      class: `child-chip${hidden ? " hidden" : ""}`,
+      role: "button",
+      tabindex: "0",
+      "aria-pressed": String(!hidden),
+      title: t("children.toggle", { group: placement.group, index: placement.index }),
+      onclick: () => {
+        const set = new Set(state.view.hidden);
+        if (set.has(placement.id)) set.delete(placement.id);
+        else set.add(placement.id);
+        state.view.hidden = set;
+        drawBoard();
+        drawContext();
+        renderChildStrip(group, index);
+        persist("view");
+      },
+      onkeydown: (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        event.currentTarget.click();
+      },
+    },
+      el("button", {
+        class: "child-nav",
+        type: "button",
+        text: "↗",
+        title: t("children.go"),
+        "aria-label": t("children.go"),
+        onclick: (event) => {
+          event.stopPropagation();
+          selectGlyph(placement.group, placement.index);
+        },
+      }),
+      glyphThumb(renderer.renderGlyph(placement.group, placement.index).image, box),
+      `${placement.group}[${placement.index}]`,
+    );
+    els.childStrip.append(tile);
   }
 }
 
@@ -944,7 +978,6 @@ function renderGroupInfo() {
   els.groupDetail.replaceChildren();
   els.childInfo.replaceChildren();
   els.textureInfo.replaceChildren();
-  els.layerList.replaceChildren();
   if (!group || !state.selected) {
     els.groupDetail.textContent = t("group.none");
     els.groupIndexControls.hidden = true;
@@ -1009,33 +1042,6 @@ function renderGroupInfo() {
     els.childInfo.append(el("div", { class: "muted", text: children.size === 0 ? t("children.none") : t("children.noCurrent") }));
   }
 
-  const tree = buildLayerTree(state.workspace.declaration, group.name, index);
-  const layers = flattenLayers(tree.root);
-  if (layers.length === 0) {
-    els.layerList.append(el("div", { class: "muted", text: t("layers.none") }));
-  }
-  renderChildStrip(group, index);
-
-  for (const layer of layers) {
-    const checkbox = el("input", { type: "checkbox", checked: !state.view.hidden.has(layer.id) });
-    checkbox.addEventListener("change", () => {
-      const hidden = hiddenSet();
-      if (checkbox.checked) hidden.delete(layer.id);
-      else hidden.add(layer.id);
-      state.view.hidden = [...hidden];
-      drawBoard();
-      drawContext();
-      persist("view");
-    });
-    els.layerList.append(
-      el("label", { title: layer.id },
-        checkbox,
-        el("span", { class: "depth", text: "  ".repeat(Math.min(6, layer.depth)) }),
-        el("span", { text: `${layer.group}[${layer.index}]` }),
-        el("span", { class: "muted", text: ` i${layer.importIndex + 1}` }),
-      ),
-    );
-  }
 }
 
 function renderUsageList(element, codepoints, { unknown = false } = {}) {
@@ -1232,6 +1238,7 @@ function refreshAll() {
   renderHistory();
   drawBoard();
   drawContext();
+  if (state.selected) renderChildStrip(currentGroup(), state.selected.index);
   drawTextPreview();
   updateFontUi();
 }
