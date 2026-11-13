@@ -1,5 +1,5 @@
 import { parseDeclaration, findGroupGlyphByText, cropBox } from "./declaration.js";
-import { AssetStore, sourcePath, sourceRows } from "./assets.js";
+import { AssetStore, blankTexture, sourcePath, sourceRows } from "./assets.js";
 import {
   Renderer,
   buildLayerTree,
@@ -414,6 +414,19 @@ function adoptWorkspace(workspace, { restored = false } = {}) {
   persist("open");
 }
 
+async function restoreLastWorkspace() {
+  if (state.workspace) return;
+  try {
+    const [latest] = await listWorkspaces();
+    if (!latest || state.workspace) return;
+    const workspace = await loadWorkspace(latest.id);
+    if (!workspace || state.workspace) return;
+    adoptWorkspace(workspace, { restored: true });
+  } catch (error) {
+    setStatus(t("status.openFailed", { message: error.message }), "failed");
+  }
+}
+
 async function openDeclarationFile(file) {
   try {
     const text = await file.text();
@@ -670,16 +683,16 @@ function drawGrid(ctx, image, zoom) {
   const dpr = globalThis.devicePixelRatio || 1;
   ctx.save();
   ctx.strokeStyle = document.documentElement.dataset.theme === "dark" ? "rgba(230, 232, 236, 0.32)" : "rgba(40, 47, 58, 0.22)";
-  ctx.lineWidth = 1;
+  ctx.lineWidth = Math.max(2, Math.round(2 * dpr));
   for (let x = 1; x < image.width; x += 1) {
-    const px = Math.round(x * zoom * dpr) + 0.5;
+    const px = Math.round(x * zoom * dpr);
     ctx.beginPath();
     ctx.moveTo(px, 0);
     ctx.lineTo(px, image.height * zoom * dpr);
     ctx.stroke();
   }
   for (let y = 1; y < image.height; y += 1) {
-    const py = Math.round(y * zoom * dpr) + 0.5;
+    const py = Math.round(y * zoom * dpr);
     ctx.beginPath();
     ctx.moveTo(0, py);
     ctx.lineTo(image.width * zoom * dpr, py);
@@ -1523,13 +1536,22 @@ function renderSourceTable() {
   const body = el("tbody");
   for (const row of rows) {
     const pick = el("button", { class: "small", type: "button", text: t("sources.pick"), onclick: () => openManualLink(row.path) });
+    const blank = row.path && row.required && !row.required.error && !row.asset
+      ? el("button", {
+          class: "small",
+          type: "button",
+          text: t("sources.blank"),
+          "data-blank-source": row.path,
+          onclick: () => createBlankTexture(row.path, row.required),
+        })
+      : null;
     const tr = el("tr");
     tr.append(
       el("td", { text: row.set }),
       el("td", { text: row.source }),
       el("td", { text: row.declaredPath }),
       el("td", { text: row.required ? `${row.required.width}×${row.required.height}` : "—" }),
-      el("td", {}, pick),
+      el("td", {}, pick, blank ? " " : null, blank),
       el("td", { text: row.asset?.path ?? "—" }),
       el("td", { text: row.asset ? `${row.asset.width}×${row.asset.height}` : "—" }),
       el("td", { class: row.error ? "error" : "", text: row.error ?? t(row.asset ? "sources.linked" : "sources.unlinked") }),
@@ -1544,6 +1566,23 @@ function openManualLink(path) {
   if (!path) return;
   state.linkTarget = path;
   els.imageFile.click();
+}
+
+function createBlankTexture(path, required) {
+  try {
+    const image = blankTexture(required);
+    state.workspace.assets.bind(path, image, { minimum: required });
+    state.renderer.invalidate();
+    state.baseCache.clear();
+    renderSourceTable();
+    renderNavigator();
+    drawBoard();
+    drawContext();
+    els.importReport.textContent = t("sources.blankCreated", { path, width: image.width, height: image.height });
+    persist("link");
+  } catch (error) {
+    els.importReport.textContent = error.message;
+  }
 }
 
 async function handleImages(files) {
@@ -2144,6 +2183,7 @@ function refreshAllInitial() {
   els.undo.disabled = true;
   els.redo.disabled = true;
   bindEvents();
+  restoreLastWorkspace();
   setInterval(() => {
     if (!state.workspace || !state.storage.readOnly || !state.storage.lock?.tryAcquire()) return;
     state.storage.readOnly = false;

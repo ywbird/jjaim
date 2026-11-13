@@ -55,6 +55,13 @@ export function minimumTextureSizes(declaration) {
   return result;
 }
 
+export function blankTexture(required) {
+  if (!required || required.error) throw new Error(required?.error ?? "최소 크기를 알 수 없습니다");
+  const width = Math.max(1, Math.ceil(required.width));
+  const height = Math.max(1, Math.ceil(required.height));
+  return { width, height, data: new Uint8Array(width * height * 4) };
+}
+
 export function sizeError(required, width, height) {
   if (!required) return null;
   if (required.error) return required.error;

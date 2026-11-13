@@ -57,13 +57,18 @@ writeFileSync(
   declarationPath,
   JSON.stringify({
     metadata: { name: "Browser" },
-    texture_sets: { main: { sheet: "sheet.png" } },
+    texture_sets: { main: { sheet: "sheet.png", blank: "blank.png" } },
     groups: {
       chars: {
         size: [2, 1],
         count: 1,
         texture: { set: "main", source: "sheet", start: [0, 0], direction: "right" },
         unicode: [{ from: [0, 1], to: "U+0041" }],
+      },
+      spare: {
+        size: [1, 1],
+        count: 1,
+        texture: { set: "main", source: "blank", start: [0, 0], direction: "right" },
       },
     },
   }),
@@ -116,9 +121,25 @@ try {
   await page.waitForFunction(() => document.querySelector("#import-report").textContent.includes("최소 2×1"));
   assert.equal(await page.evaluate(() => window.__editor.state.workspace.assets.has("sheet.png")), false);
 
+  await page.click("#file-menu-button");
+  await page.click("#open-sources");
+  await page.waitForSelector('[data-blank-source="blank.png"]');
+  await page.click('[data-blank-source="blank.png"]');
+  await page.waitForFunction(() => window.__editor.state.workspace.assets.has("blank.png"));
+  assert.deepEqual(await page.evaluate(() => {
+    const asset = window.__editor.state.workspace.assets.get("blank.png");
+    return { width: asset.width, height: asset.height, transparent: asset.current.every((value, index) => index % 4 !== 3 || value === 0) };
+  }), { width: 1, height: 1, transparent: true });
+  await page.click('#source-dialog button[value="close"]');
+
   await (await page.$("#image-file")).uploadFile(pngPath);
   await page.waitForFunction(() => window.__editor.state.workspace.assets.has("sheet.png"));
   await page.waitForFunction(() => document.querySelector("#save-status").classList.contains("saved"));
+
+  assert.equal(await page.$eval("#board", (canvas) => {
+    const data = canvas.getContext("2d").getImageData(canvas.width / 2 - 1, canvas.height / 2, 1, 1).data;
+    return data[3] > 0 && data[3] < 255;
+  }), true, "grid line must be at least 2 CSS pixels thick");
 
   assert.equal(await page.$eval("#child-filter", (node) => node.checked), true);
   assert.equal(await page.$eval('[data-tool="pencil"]', (node) => node.textContent.trim()), "");
@@ -156,6 +177,7 @@ try {
     await page.click("#open-works");
     await page.click('[data-records-tab="compare"]');
     assert.equal(await page.$eval("#shadow-toggle", (node) => node.disabled), false);
+    await page.waitForSelector("#shadow-toggle", { visible: true });
     await page.click("#shadow-toggle");
     assert.equal(await page.evaluate(() => window.__editor.state.shadow.visible), true);
     const shadowPixels = await page.$eval("#board", (canvas) => {
@@ -202,6 +224,8 @@ try {
   await page.evaluate(() => window.__editor.state.storage.lock?.release());
   await page.setOfflineMode(false);
   await page.reload({ waitUntil: "networkidle0" });
+  await page.waitForFunction(() => window.__editor?.state.workspace?.fileName === "browser.json");
+  assert.equal(await page.evaluate(() => window.__editor.state.workspace.history.headId), head);
   await page.click("#open-works");
   await page.waitForFunction(() => document.querySelectorAll("#works-list .list-item").length === 1);
   await page.evaluate(() => {

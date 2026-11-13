@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { minimumTextureSizes, sizeError } from "../src/assets.js";
+import { blankTexture, minimumTextureSizes, sizeError } from "../src/assets.js";
 import { parseDeclaration } from "../src/declaration.js";
 
 const texture = (start, direction = "right") => ({ set: "main", source: "sheet", start, direction });
@@ -43,6 +43,14 @@ test("negative extraction coordinates cannot be satisfied by any PNG", () => {
   assert.equal(size.minX, -1);
   assert.match(size.error, /음수/);
   assert.match(sizeError(size, 100, 100), /음수/);
+});
+
+test("blank texture uses the declaration minimum and is fully transparent", () => {
+  const image = blankTexture({ width: 3, height: 2, minX: 0, minY: 0, error: null });
+  assert.equal(image.width, 3);
+  assert.equal(image.height, 2);
+  assert.deepEqual([...image.data], new Array(3 * 2 * 4).fill(0));
+  assert.throws(() => blankTexture({ width: 1, height: 1, error: "음수 좌표" }), /음수 좌표/);
 });
 
 test("larger images pass and smaller images name the required size", () => {
