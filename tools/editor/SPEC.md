@@ -1,232 +1,539 @@
-# Declarative Texture Font Editor (v0.1)
+# 선언 기반 글꼴 텍스처 편집기 명세
+
+- 문서 버전: 1.0
+- 상태: 구현 전 코딩 에이전트 전달용 요구사항
+- 작업 위치: `tools/editor/`
+- 실행 진입점: `tools/editor/index.html`
 
-- Status: v0.1 implemented in this directory. Later changes should update this design first.
-- Audience: a coding agent with no prior context. It may implement this editor from this file plus `../../SPEC.md` and `../../examples/`.
-- Goal: edit glyphs by arranging source groups as children, not by painting.
-- Input model: the project is a directory of group definitions. Editing one group may change many glyphs that import it.
+이 문서는 **선언을 읽어 글자와 부품의 관계를 탐색하면서, 원본 PNG의 픽셀을 수정하는 프로그램**을 정의한다. 선언 편집기의 명세가 아니다. 아래의 필수 요구사항을 임의로 후속 기능으로 미루지 않는다.
 
-## 0. Handoff summary (read first)
+## 1. 정본, 범위, 용어
+
+### 1.1. 참고할 자료와 우선순위
 
-1. Implement as a static web page with no server. Editing happens in the browser; data may be exported as files.
-2. A group definition contains `description`. Show each group's description together with its direct child groups' descriptions.
-3. Glyph picking follows `../../SPEC.md`'s conceptual model: group, local index, optional Unicode mapping.
-4. If a group has no description, display it as empty; do not invent one.
+1. 그룹 합성의 의미는 루트 [`../../SPEC.md`](../../SPEC.md), Draft v0.3이 정본이다.
+2. 이 문서는 브라우저 앱의 파일 연결, 렌더링 정책, 편집, 저장, 히스토리, UI를 정한다. 루트 선언 형식을 확장하지 않는다.
+3. 의미 확인과 테스트 사례에는 다음을 사용한다.
+   - [`../inspector/SPEC.md`](../inspector/SPEC.md)
+   - [`../inspector/src/glyph_inspect/decl.py`](../inspector/src/glyph_inspect/decl.py)
+   - [`../inspector/src/glyph_inspect/render.py`](../inspector/src/glyph_inspect/render.py)
+   - [`../../examples/hangul.json`](../../examples/hangul.json), `hangul.png`, `ascii.png`
+   - [`../../examples/ascii.json`](../../examples/ascii.json)
+4. Python 코드는 **의미와 테스트의 참고**이지 실행 시 의존성이 아니다. 브라우저에서 JS로 처리한다.
+5. `tools/declaration-editor/`는 별도 프로그램이다. 그 구현을 읽거나 수정하거나 이 앱의 전제로 삼을 필요가 없다.
+6. UI 흐름의 참고는 [exqt/pixel-font-maker](https://github.com/exqt/pixel-font-maker)다. 글리프셋 탐색과 부품에서 사용처로 이동하는 흐름을 참고하되, 그 프로그램의 파일 형식이나 한글 전용 조합 로직을 도입하지 않는다.
 
----
+이 문서에서 '필수', '해야 한다', '금지'는 인수 조건이다. 대화에서 고정하지 않은 세부 정책도 구현자가 다시 추측하지 않도록 이 문서에서 결정한다. 특히 압축 형식은 ZIP, 영역 이동은 경계 안 제한, 과거 복원은 새 명령 추가, 이력은 과거 분기 보존으로 정한다. 내부 모듈의 파일명과 시각 디자인은 구현자가 정할 수 있지만, 여기서 정한 동작이나 데이터 보존 규칙은 바꿀 수 없다.
 
-## 1. Background: why this exists
+### 1.2. 용어
 
-Most pixel-font tools edit characters directly. This repository defines glyphs by groups, offsets, clipping, and repetition. Therefore the editor must expose relationships, not only final characters.
+| 용어 | 의미 |
+| --- | --- |
+| 선언 | 읽기 전용 JSON 한 개. 그룹과 텍스처 소스, 조합, 유니코드 대응을 정의한다. |
+| 그룹 글리프 | `(groupName, index)` 한 쌍. Unicode가 없어도 존재한다. |
+| 유니코드 글자 | 선언에 매핑된 코드 포인트 하나. 여러 코드 포인트가 같은 그룹 글리프의 별칭일 수 있다. |
+| 유니코드 셋 | 탐색용 코드 포인트 집합. 선언의 그룹 및 `texture_sets`와 서로 다르다. |
+| 텍스처 자산 | 실제로 편집하는 PNG 한 장. 정규화한 이미지 경로가 같으면 하나의 자산이다. |
+| 자기 레이어 | 그룹 자신의 `texture`에서 추출한 픽셀. 임포트한 자식의 합성 결과와 구분한다. |
+| 배치 발생 건 | 특정 임포트/규칙/반복에서 생긴 자식 배치 한 건. 같은 부품이 두 번 배치되면 두 건이다. |
+| 작업 | 선언, PNG, 원본, 수정 상태, 히스토리, 보기 설정을 브라우저에 보관하는 내부 작업 공간. |
+| 작업 파일 | 외부로 주고받는 PNG 한 개 또는 PNG들만 담은 ZIP. 별도의 프로젝트 번들 포맷은 없다. |
+| 원본 | 자산을 해당 작업에 최초 연결했을 때의 이미지. 이후 편집이나 내보내기로 바뀌지 않는다. |
 
----
+### 1.3. 포함하지 않는 기능
 
-## 2. Terms
+- 선언의 그룹, 설명, 크기, 개수, 추출 좌표, 임포트, 반복, 오프셋, 유니코드 매핑을 수정하는 GUI.
+- 특정 완성 글자만 예외로 바꾸는 규칙, 숨겨진 보정 레이어, PNG 없는 그룹에 새 레이어를 만드는 기능.
+- TTF/WOFF/BDF 등 폰트 출력과 메트릭 편집.
+- 참고 폰트를 자동으로 비트맵화해 작업 PNG에 넣는 기능.
+- 클라우드 계정, 서버 저장, 동기화, 공동 편집, 플러그인.
+- 범용 컬러 페인팅, 자유형/벡터 드로잉. 회전, 크기 변경, 자유 선택, 클립보드 복사/붙여넣기는 이번 필수 범위가 아니다.
 
-| Term | Definition |
-|---|---|
-| definition set | the full directory of group definitions loaded for editing |
-| parent group | a group that imports another group |
-| child group | a group being imported by a parent |
-| description | a group's short human explanation, stored as text and shown by the editor |
-| source region | a rectangle of glyph cells in a child group used by one import rule |
-| live preview | a rendering of all affected glyphs after an edit, before export |
+**부품 편집과 완성 글자 예외 편집 중 선택하는 미결 사항은 없다. 원본 텍스처만 편집한다.**
 
----
+## 2. 실행 및 배포 계약
 
-## 3. Confirmed facts and constraints
+- 서버 프로세스, Python, Node.js, 설치 과정, 빌드 과정 없이 브라우저에서 실행되어야 한다.
+- GitHub Pages의 저장소 하위 경로, 예를 들어 `https://USER.github.io/REPO/tools/editor/`에서 동작해야 한다.
+- 앱 자산의 URL은 문서 기준 상대 경로를 사용한다. `/src/...` 같은 도메인 루트 절대 경로나 서버 URL 재작성에 의존하지 않는다.
+- HTML/CSS/JS와 필요한 데이터 및 라이브러리를 저장소에 포함한다. CDN, 원격 폰트, API, 분석 서버 호출은 사용하지 않는다.
+- 외부 라이브러리는 배포 파일을 `vendor/` 등에 동봉하고 버전, 출처, 라이선스를 기록한다. 테스트 도구만 개발 의존성으로 설치하는 것은 가능하다.
+- 페이지 로딩 후 사용자 파일의 읽기, 이미지 처리, 폰트 렌더링, 저장 및 내보내기는 모두 로컬 브라우저에서 수행한다. 사용자 파일을 업로드하지 않는다.
+- 최신 안정판 데스크톱 Chromium과 Firefox를 지원한다. File System Access API, 폴더 선택, OPFS를 필수 조건으로 삼지 않는다.
+- `file://` 직접 열기, 모바일 전용 UI, 서비스 워커/PWA 설치, 최초 방문 전 오프라인 실행은 인수 조건이 아니다.
+- UI 문구와 오류 메시지는 한국어다. 그룹 이름, 설명, 파일명은 입력된 문자열 그대로 표시한다.
 
-| # | Fact | Evidence | Design effect |
-|---|---|---|---|
-| C-1 | The editor must read and write descriptions for groups. | user request | Description is a first-class field. |
-| C-2 | A group's description must be visible while editing that group. | user request | A visible description panel, not a hidden property only. |
-| C-3 | Child groups' descriptions must also be shown with their names. | user request | The hierarchy view must be description-aware. |
-| C-4 | Editing may change many glyphs at once. | shared group structure | Editing must show affected glyphs immediately. |
-| C-5 | There is no server. | user decision | All parsing, editing, undo, and export are local. |
-| C-6 | Definitions and example data already exist. | current repository | The editor must not require a new project format to start working. |
+첫 화면에는 `선언 열기`와 `저장된 작업`을 제공한다. 예제나 이전 작업을 알리지 않고 자동으로 덮어 불러오지 않는다.
 
----
+## 3. 작업과 데이터 모델의 필수 경계
 
-## 4. Non-goals (do not build)
+### 3.1. 선언과 픽셀 데이터 분리
 
-- A font rasterizer or final TTF renderer inside this editor.
-- A generic vector-drawing program.
-- Full project management, version control, or cloud sync.
-- A plugin system.
+- 작업 하나에는 선언 하나가 있다. 다른 선언을 열면 새 작업을 만들고 이전 작업은 보존한다.
+- 동일한 이름/내용의 선언을 다시 열어도 기존 작업을 자동 교체하지 않는다. 최근 작업 목록에서 명시적으로 다시 열 수 있다.
+- 선언 원문과 파싱 결과를 보관하되 원문은 변경하지 않는다. 입력 JSON의 임의 필드를 픽셀 편집 정보 저장소로 사용하지 않는다.
+- PNG 자산은 원본과 현재 픽셀 배열을 구분한다. 렌더 캐시는 원본도 현재 상태의 정본도 아니다.
+- 픽셀 변경은 `(assetId, 이미지 절대 픽셀 좌표)`를 대상으로 한다. `(group, index)`별로 잘라 둔 독립 이미지를 정본으로 저장해서는 안 된다.
+- 같은 경로를 참조하는 여러 셋/소스/그룹은 같은 픽셀 버퍼를 공유한다. 내용이 우연히 같은 서로 다른 경로의 PNG는 별도 자산이다.
 
----
+### 3.2. 작업 저장 항목
 
-## 5. Product shape
+브라우저에는 최소한 다음을 보관한다.
 
-Single static page.
+- 내부 작업 ID, 표시 이름, 생성/최근 수정 시각, 저장 스키마 버전.
+- 선언 원문 및 표시 파일명.
+- 선언 소스와 자산의 연결, 각 자산의 논리 경로, 크기, 원본 PNG/원본 픽셀, 현재 상태.
+- 전체 변경 이력, 현재 revision, redo 선택 정보.
+- 마지막 선택 글자/그룹, 탐색 셋/페이지/필터, 미리보기 문구, 확대/보기 설정.
+- 참고 폰트를 불러온 경우 그 파일과 섀도 설정.
 
-Main areas:
+파싱 결과, 역참조 인덱스, 썸네일은 다시 계산해도 된다. 브라우저 내부 작업 ID를 선언이나 내보내는 PNG의 필수 메타데이터로 넣지 않는다.
 
-1. Project/group browser
-2. Hierarchy view for the selected group
-3. Detail panel for the selected group and each direct child
-4. Glyph-grid editor for the selected group
-5. Preview of affected glyphs
-6. Undo/redo and export controls
+## 4. 선언 해석과 검증
 
----
+### 4.1. 지원하는 입력
 
-## 6. Data display requirements
+- UTF-8 JSON만 받는다. UTF-8 BOM은 허용한다. YAML이나 v0.2의 직접 `texture.source: "file.png"` 문법으로 자동 추측/변환하지 않는다.
+- `metadata`, `texture_sets`, `groups` 및 그룹의 `description`, `size`, `count`, `texture`, `imports`, `unicode`를 v0.3대로 읽는다.
+- `metadata`의 추가 설명 필드는 보존하되 조합에 사용하지 않는다. `name`, `version`, `author`가 있으면 문자열이어야 한다.
+- 이미지가 없어도 선언 검증, 그룹 탐색, Unicode 목록, 구조적 사용처 조회가 가능해야 한다.
+- Unicode 매핑이 없는 선언도 허용한다. 이때 그룹 탐색/편집은 가능하고 문자 미리보기는 `유니코드 매핑 없음` 상태다.
+- 빈 `groups`는 빈 작업으로 표시한다. 에디터가 새 그룹을 만들어 채우지 않는다.
 
-### 6.1 Group detail panel
+### 4.2. 거부할 선언
 
-When a group is selected, show:
+다음을 오류 위치와 이유를 포함해 거부한다.
 
-- group name
-- `size`
-- `count`
-- its own `description`
-- whether it has texture data, imports, Unicode mappings, or none of these
+- JSON 구문 오류, 중복 키, 잘못된 자료형, 필수 필드 누락, 알려지지 않은 선언 필드.
+- 잘못된 크기/개수/범위, 존재하지 않는 셋/소스/그룹, 순환 임포트.
+- 반복 확장 후 인덱스 이탈, 다른 그룹 글리프에 대한 Unicode 충돌, 유효하지 않은 스칼라 값/서로게이트.
+- 배치 계산에 사용하는 정수가 JS의 안전한 정수 범위를 벗어나는 경우. 곱셈/합의 중간 결과도 확인한다.
 
-### 6.2 Child list
+정수에 boolean이나 숫자 문자열을 허용하지 않는다. `from`은 끝 제외이며 빈/역방향 구간을 허용하지 않는다. `U+0000`은 유효하다. 같은 `(코드 포인트, 그룹, 인덱스)` 매핑의 중복은 하나로 정규화하고, 같은 그룹 글리프의 서로 다른 Unicode 별칭은 유지한다.
 
-For every direct child of the selected group, show:
+`JSON.parse`만으로 중복 키 검증이 되었다고 간주하지 않는다. 문자열 안의 텍스트를 오인하지 않는 파서/토큰 기반 검증을 사용한다. 사용자 그룹 이름을 JS 프로토타입 키와 혼동하지 않도록 `Map` 등 안전한 자료구조를 사용한다.
 
-- child group name
-- that child group's `description`, or an explicit empty state
-- number of import rules from the parent into that child
-- total number of source glyph placements contributed by that child
+선언을 잘못 읽었을 때 일부만 정상 작업으로 채택하지 않는다. 기존 작업은 그대로 두고 새 입력의 실패를 표시한다.
 
-### 6.3 Hierarchy navigation
+## 5. PNG/ZIP 가져오기와 소스 연결
 
-The hierarchy view must let the user:
+### 5.1. 외부 파일 형식
 
-- open a parent
-- open a child
-- jump directly to a child group for editing
-- see, at a glance, which children lack descriptions
+- 필수 형식은 PNG와 ZIP이다. 여러 PNG 파일을 파일 선택에서 동시에 선택하는 것도 지원한다. 확장자 판정은 대소문자를 구분하지 않되 실제 이미지 형식도 확인한다.
+- ZIP은 PNG들의 파일명/상대 경로를 보존하는 일반 압축 파일이다. JSON, 히스토리, 전용 manifest를 요구하지 않는다.
+- ZIP의 저장 방식과 Deflate 방식 항목을 지원한다. 비밀번호 ZIP, 분할 ZIP, ZIP64, TAR/GZip/7z는 이번 버전에서 지원하지 않으며 명확한 오류를 낸다.
+- ZIP 안의 디렉터리 항목은 건너뛰고, PNG 이외 일반 파일은 건너뛴 파일명 목록을 보여준다. PNG가 하나도 없으면 가져오기 실패다.
+- PNG를 일반 파일로 전달해도, ZIP으로 전달해도 같은 연결 절차를 사용한다.
+- PNG/ZIP만으로는 그룹 정의를 만들지 않는다. 선언이 없으면 먼저 선언을 열도록 안내한다.
 
-### 6.4 Empty description rule
+### 5.2. 논리 경로
 
-If a group's description is absent or empty, display `(no description)` or equivalent empty-state text. Do not hide the field.
+이미지 경로는 선언이 있는 디렉터리를 논리 루트로 해석한다. OS 파일의 실제 절대 경로를 알아내려 하지 않는다.
 
----
+- 경로 비교는 대소문자를 구분한다. Unicode 파일명을 임의 정규화하거나 URL 디코딩하지 않는다.
+- 경로 구분의 `\\`는 `/`로 통일하고, 중복 구분자와 `.`를 제거하고 내부의 `..`를 정리한다.
+- `sheet.png`, `./sheet.png`, `images/../sheet.png`는 같은 논리 자산이다.
+- 정리한 뒤에도 상위 루트로 나가는 `..`, 절대 경로, 드라이브 경로, URL은 이 버전에서 자동/수동 모두 연결하지 않는다. 이 앱의 리소스 지원 범위 밖임을 표시하며 선언 오류와는 구분한다. 해당 소스는 미연결 상태로 남고, 선언 원문을 몰래 수정하지 않는다.
+- ZIP 항목의 절대 경로, 루트 밖 이동, 심볼릭 링크, 정규화 후 중복 경로는 가져오기 오류다. 같은 이름의 첫 파일을 조용히 선택하지 않는다.
 
-## 7. Editing model
+### 5.3. 연결 순서와 모호한 파일명
 
-### 7.1 What is edited
+1. ZIP 항목 등의 상대 경로가 선언의 정규화 경로와 정확히 일치하면 자동 연결한다.
+2. 상대 경로가 없는 일반 PNG는 basename이 일치하는 **미연결 논리 경로가 하나뿐**이고 입력 후보도 하나뿐일 때만 자동 연결한다.
+3. 예를 들어 `a/sheet.png`, `b/sheet.png`가 둘 다 있으면 basename만으로 연결하지 않는다. 사용자가 소스 연결 표에서 각 경로에 파일을 선택한다.
+4. ZIP에 `bundle/sheet.png`가 있고 선언에는 `sheet.png`만 있으면 접두 폴더를 임의 제거하지 않는다. 같은 표에서 연결한다.
+5. 소스 연결 표에는 셋, 소스 이름, 선언 경로, 연결된 파일, 이미지 크기, 미연결/오류 상태를 표시한다.
+6. 연결은 브라우저 작업의 리소스 바인딩일 뿐 선언 수정이 아니다. 참조되지 않는 ZIP 이미지는 개수를 알리고 작업에 채택하지 않는다.
 
-The user edits a selected group's local definition. This may include:
+한 논리 경로에 연결하면 그 경로의 모든 셋/소스 별칭에 함께 적용한다. 서로 다른 논리 경로에 같은 파일을 수동으로 선택해도 두 자산을 몰래 하나로 합치지 않는다.
 
-- texture-backed glyph source regions
-- import rules into this group
-- local offsets and repetition parameters
-- the group's own description text
+### 5.4. 최초 연결과 다시 가져오기
 
-### 7.2 What is not edited here
+- 미연결 자산을 최초 연결하면 그 PNG가 이 자산의 불변 원본이 된다. 리소스 연결 자체는 픽셀 편집 revision이 아니다.
+- 후에 추가 연결한 자산은 기존 모든 revision에서 자기 최초 원본을 기본 상태로 가진다. 과거 revision이 새 자산을 삭제하거나 미연결 상태로 돌리지 않는다.
+- 연결된 자산에 다시 PNG를 가져올 때는 `현재 이미지 교체`를 명시적으로 확인한다. 크기가 같아야 하고, 전체 이미지 차이를 하나의 되돌릴 수 있는 픽셀 명령으로 기록한다. 원본은 교체하지 않는다.
+- 여러 연결 자산을 한 번에 교체하면 전체를 하나의 명령으로 기록한다. 연결 대상 중 오류가 있으면 사용자 확인 후 실행하기 전에는 어떤 교체도 반영하지 않는다.
+- 다른 크기의 이미지를 사용하려면 새 작업으로 연다. 이미지 크기 변경을 편집 기능으로 제공하지 않는다.
 
-The editor does not directly edit the final flattened font. If a change to a child affects many parents, that is expected and must be visible in preview.
+### 5.5. 이미지 오류와 픽셀 보존
 
-### 7.3 Edit scope
+- 실제 PNG 시그니처/디코딩을 확인한다. 확장자만 바꾼 다른 형식, 깨진 이미지, 애니메이션 PNG는 거부한다.
+- 없는 PNG나 잘못된 추출 영역을 투명 글리프로 대신하지 않는다. 관련 미리보기에 `리소스 없음`/`추출 범위 오류`를 표시하고 그 영역의 편집을 막는다. 독립적인 정상 자산/그룹의 사용은 계속 가능하다.
+- Unicode/임포트에서 참조한 영역을 검사하며, 사용자가 미매핑 그룹 인덱스를 직접 열 때도 그 인덱스의 추출 범위를 검사한다.
+- 입력에 색 또는 반투명 픽셀이 있어도 자동 임계값 변환, 흰색 배경 제거, 전체 흑백화를 하지 않는다. 기존 가시 픽셀은 보존하고, **새로 칠하거나 지우는 값만** 검정/투명으로 제한한다.
+- 완전투명 픽셀의 숨은 RGB 값과 PNG 압축 방식/메타데이터는 보존 계약 밖이다. 알파 0의 RGB는 0으로 정규화해도 된다. 그 외 미편집 영역의 디코딩된 RGBA는 보존한다.
+- 픽셀 정본은 비사전곱(straight alpha) 8비트 RGBA다. 반투명 픽셀이 Canvas 내부의 알파 사전곱/역변환으로 바뀐 값을 원본으로 채택해서는 안 된다. 디코딩/인코딩의 원본 보존을 보장하는 경로를 사용하고, 표시용 Canvas에서 전체 자산을 다시 읽어 정본을 재구성하지 않는다.
 
-A change made on a parent group's screen may modify only:
+## 6. 그룹 합성과 레이어 모델
 
-- that parent group, or
-- the import entries belonging to that parent.
+- 좌상단 원점, 오른쪽 x 증가, 아래쪽 y 증가, 논리 정수 픽셀 좌표를 사용한다.
+- 추출 방향은 `right`, `left`, `down`, `up` 네 가지를 지원하고 자동 줄바꿈은 하지 않는다.
+- 자기 텍스처가 있으면 첫 레이어로 놓고, 선언의 임포트/규칙/반복 순서대로 **source-over 알파 합성**한다.
+- `repeat`의 앞 축이 바깥 반복이고 마지막 축이 안쪽이며, 각 축 조합 안에서 `from` 구간의 인덱스를 순서대로 처리한다.
+- 자식을 자기 크기에 먼저 합성/클리핑한 뒤 오프셋을 적용하고 부모 크기로 다시 클리핑한다. 음수 오프셋도 처리한다.
+- 중간 그룹의 클리핑을 무시하고 잎 텍스처에 누적 오프셋만 더해 한꺼번에 그려서는 안 된다. `parts()` 결과만으로 최종 이미지를 평탄화하면 이 오류가 생길 수 있다.
+- 같은 부품/그룹의 여러 배치는 별도 레이어 발생 건으로 유지한다. 순서를 바꾸거나 중복을 제거하지 않는다.
+- 검정/투명 입력의 출력은 검사기와 픽셀 단위로 같아야 한다. 반투명 합성은 표준 source-over를 사용하고 브라우저와 Pillow의 정수 반올림 차이는 채널당 최대 1까지 허용한다.
 
-It must not silently rewrite unrelated children unless the user explicitly opens and edits that child.
+레이어 트리는 각 배치의 그룹/인덱스, 임포트 번호, 규칙/반복 발생 건, 로컬/누적 오프셋과 클리핑 문맥을 보존해야 한다. 표시 이름이 같은 레이어의 체크박스가 서로 잘못 연결되지 않도록 발생 건 ID를 사용한다.
 
----
+## 7. 유니코드 셋, 검색, 페이지네이션
 
-## 8. Preview requirements
+### 7.1. 필수 내장 셋
 
-When the user changes a group, the editor must immediately show:
+범위 표기의 양 끝은 모두 포함한다. 선언의 `from`과 혼동하지 않는다.
 
-- the affected glyphs in the current group
-- all directly affected parent glyphs
-- a count of changed glyphs
+| UI 이름 | 집합 | 전체 수 |
+| --- | --- | ---: |
+| 현재 선언의 문자 | 모든 `unicode` 매핑의 고유 코드 포인트 | 선언에 따름 |
+| ASCII | U+0020..U+007E, 인쇄 가능 문자 | 95 |
+| Latin-1 Supplement | U+0080..U+00FF | 128 |
+| 한글 호환 자모 | U+3130..U+318F | 96 |
+| 한글 완성형 | U+AC00..U+D7A3 | 11,172 |
+| KS X 1001 한글 | KS X 1001의 완성형 한글 목록 | 2,350 |
+| 화살표 | U+2190..U+21FF | 112 |
+| 통화 기호 | Currency Symbols 블록 U+20A0..U+20CF | 48 |
 
-Preview must preserve enough context to compare before and after. A simple previous/current view is sufficient for v0.1.
+`$`, `£`, `¥`는 각각 ASCII/Latin-1에 속한다. 통화 기호 셋에 별도 추측 규칙으로 추가하지 않는다. 블록 안의 제어/미할당 코드 포인트도 `셋 전체 보기`에서는 포함하되 표시할 수 있는 실제 글자인 것처럼 취급하지 않는다.
 
----
+KS X 1001 목록은 오프라인 정적 데이터로 동봉한다. CP949의 확장 한글을 섞거나 빈도순으로 추측하지 않는다. 개발 시 Python 표준 `euc_kr`로 바이트 0xB0..0xC8 각각과 0xA1..0xFE 각각의 2,350쌍을 디코딩해 생성할 수 있다. 고유 개수/한글 범위를 검사하고 출처와 생성 방법을 기록한다. 런타임 인코딩 서비스나 Python은 필요하지 않다.
 
-## 9. Search and navigation
+### 7.2. 탐색 동작
 
-The editor must provide a way to find:
+- 기본 셋은 `현재 선언의 문자`이고 정렬은 코드 포인트 숫자 오름차순이다.
+- 내장 셋에는 `매핑된 문자만` 필터를 제공하며 기본 켬이다. 켜면 셋과 선언 매핑의 교집합만 표시한다.
+- 항상 `매핑 N / 셋 전체 M`을 표시한다. 매핑 0인 셋을 선택 목록에서 숨기지 않는다.
+- 전체 보기에서 미매핑 문자는 구분된 빈 슬롯으로 표시한다. 클릭하면 코드 포인트와 `선언에 매핑 없음`을 보여주고 새 픽셀/그룹을 생성하지 않는다. 이전 글자의 편집 캔버스를 새 글자로 오인하게 남겨두지 않는다.
+- 슬롯에는 코드 포인트, 표시 가능한 문자, 현재 선언으로 렌더링한 썸네일을 표시한다. 시스템 폰트 문자를 선언의 결과 썸네일로 대신하지 않는다.
+- 공백, 제어 문자, 미할당 문자는 코드 포인트와 상태 라벨로 구분한다. 원시 제어 문자가 UI 구조를 깨뜨리면 안 된다.
 
-- a group by name
-- a glyph by local index
-- a glyph by Unicode code point when a mapping exists
+### 7.3. 검색
 
-Search results must open the relevant group and, when possible, highlight the affected cell range.
+- 전역 바로가기는 `U+XXXX`/`0xXXXX`(대소문자 무관), 정확한 `그룹명[0부터 시작하는 정수]`를 지원한다. 매핑/그룹/인덱스가 없으면 이유를 표시하고 임의의 다른 결과를 선택하지 않는다.
+- 문자 탐색 검색에는 문자 하나 또는 여러 문자를 입력할 수 있다. Unicode 스칼라 값 단위로 분리하고 중복을 제거해 현재 문자 목록을 필터한다. UTF-16 코드 유닛 단위로 나누지 않는다.
+- 문자 검색은 자동 Unicode 정규화나 자모 조합을 하지 않는다. 공백 같은 문자는 코드 포인트 검색으로도 찾을 수 있다.
+- 그룹 탭에는 그룹 이름의 부분 문자열 검색을 별도로 제공한다. 한글 그룹 이름과 문자 검색을 모호하게 추측하지 않는다.
+- 그룹 글리프 사용처 목록에도 문자/코드 포인트 검색을 제공한다. 그룹 전체와 현재 인덱스의 사용처를 혼동하지 않는다.
+- 전역 정확한 바로가기는 현재 셋/검색 필터와 무관하게 대상을 열 수 있다. 탐색 화면의 상태는 뒤로 가기로 돌아올 수 있게 보존한다.
 
----
+### 7.4. 페이지네이션
 
-## 10. State, undo, and export
+- 문자 목록, 그룹 내부 인덱스 목록, Unicode 사용처/영향 목록에 적용한다.
+- 페이지당 64/128/256개 선택, 기본 128개. 이전/다음, 첫/끝, 페이지 번호 직접 이동, 전체 개수를 제공한다.
+- 필터/정렬 결과를 만든 뒤 페이지를 나눈다. 검색/셋/페이지 크기가 바뀌면 1페이지로 돌아간다.
+- 결과 0개는 빈 상태이며 음수/유효하지 않은 페이지를 만들지 않는다. 마지막 페이지에서 누락/중복이 없어야 한다.
+- 목록의 다른 페이지를 열기 위해 전체 글리프를 미리 래스터화하지 않는다.
 
-### 10.1 In-memory state
+## 8. 양방향 탐색과 그룹 설명
 
-The working state lives in browser memory while the page is open.
+### 8.1. 글자에서 부품으로
 
-### 10.2 Undo / redo
+- 코드 포인트를 선택하면 매핑된 결과 그룹/인덱스와 그 합성 결과를 연다.
+- 해당 결과에 실제로 배치된 자식들을 순서대로 표시하고 클릭해 정확한 자식 그룹/인덱스로 이동한다.
+- 임의 깊이의 중간 그룹을 통과할 수 있다. 항상 텍스처가 있는 잎이라고 가정하지 않는다.
+- 중복 배치를 유지한다. 같은 부품이 다른 오프셋/클리핑으로 두 번 쓰이면 선택할 발생 건도 두 개다.
+- 부품으로 내려갈 때 출발한 Unicode 글자와 배치 경로를 `결과 문맥`으로 유지한다. 경로 표시와 앱 내부 뒤로/앞으로 이동을 제공한다.
 
-The editor must provide undo and redo for at least the current editing session.
+### 8.2. 부품에서 사용처로
 
-Minimum undoable actions:
+- 현재 `(group, index)` 자신에 직접 매핑된 별칭과, 직접/간접 부모를 통해 이를 사용하는 모든 Unicode 글자를 조회한다.
+- 목록은 코드 포인트별로 중복 제거한다. 한 글자에 같은 부품이 여러 번 있어도 문자 개수는 1이며, 배치 발생 건 수는 별도로 표시한다.
+- 투명하거나 모든 상위에서 잘려도 **구조상 참조**하면 사용처에 포함한다. `실제 픽셀 변경`과는 다르다는 라벨을 붙인다.
+- 사용처 글자를 선택하면 그 글자를 결과 문맥으로 바꿀 수 있다. Unicode 없는 부품에 대응 문자를 임의로 만들어 붙이지 않는다.
 
-- description text edits
-- import-rule edits
-- offset or repetition edits
+### 8.3. 설명과 소속 표시
 
-### 10.3 Persistence
+그룹을 열었을 때 다음을 항상 볼 수 있어야 한다.
 
-The editor must support exporting the edited definition set to files. The exact project file format is intentionally not specified in this version.
+- 현재 그룹 이름, 인덱스/개수, 크기, **현재 그룹의 `description` 원문**.
+- 텍스처 유무와 연결 상태. 있으면 셋/소스, PNG 경로와 해당 추출 사각형.
+- **직접 참조하는 자식 그룹들의 이름과 `description`**. 같은 그룹을 여러 번 임포트한 경우 설명은 묶어도 되지만 각 임포트/배치로 이동할 수 있어야 한다.
+- 현재 인덱스에 배치되지 않는 직계 자식도 그룹 정보에는 표시하고 `현재 글리프에는 배치 없음`으로 구분한다.
+- 현재 인덱스에 실제 참여하는 자식 인덱스와 상위 사용처. 이름만 보여주고 어느 부품인지 숨기지 않는다.
 
-### 10.4 Recovery rule
+설명이 없거나 빈 문자열이면 `설명 없음`을 표시한다. 다른 그룹의 설명을 대신 채우지 않는다. 긴 설명은 접을 수 있지만 원문 전체에 접근할 수 있어야 한다. 설명은 보기 전용 일반 텍스트이며 HTML/Markdown 스크립트로 실행하지 않는다.
 
-If parsing or export fails, the editor must keep the last known good in-memory state available for inspection.
+## 9. 픽셀 편집과 영역 이동
 
----
+### 9.1. 편집 가능 조건
 
-## 11. Interaction requirements
+- 선택한 그룹에 `texture`가 있고 해당 PNG/추출 사각형이 정상이어야 한다.
+- 쓰기는 자기 추출 사각형 내부에만 허용한다. 같은 PNG의 옆 글리프, 여백, 자식 임포트 레이어를 포인터 동작으로 수정할 수 없다.
+- 텍스처 없는 그룹에서는 그리기/지우기/영역 선택/이동 도구를 비활성화하고 `합성 전용 그룹입니다. 자식 그룹을 선택하세요`를 표시한다. 결과는 계속 볼 수 있다.
+- 텍스처와 임포트를 함께 가진 그룹은 자기 레이어만 수정한다. 지웠는데 자식 픽셀이 남아 있는 것은 정상이며, 사용자가 자기 레이어만 단독 표시할 수 있게 한다.
+- 화면상의 레이어 토글, 섀도, diff 등의 픽셀을 편집 데이터로 읽어들이지 않는다.
 
-The editor should make the following possible in one continuous flow:
+### 9.2. 그리기와 지우기
 
-1. Select a group.
-2. Read its description.
-3. See its children and their descriptions.
-4. Edit the selected group.
-5. Inspect the resulting affected glyphs.
-6. Undo if the result is wrong.
-7. Export the updated definition set.
+- 1논리 픽셀 연필과 지우개를 필수 제공한다. 연필은 RGBA `(0,0,0,255)`, 지우개는 `(0,0,0,0)`으로 **대입**한다.
+- 좌클릭 드래그는 선택 도구를 수행하고 연필 상태의 우클릭 드래그는 지우기다. 브라우저 컨텍스트 메뉴는 편집 캔버스 위에서만 막는다.
+- 빠른 드래그의 포인터 샘플 사이를 정수 격자 선분으로 이어 픽셀 구멍이 생기지 않게 한다.
+- 한 번의 포인터 누름부터 놓음까지가 한 명령이다. 같은 픽셀을 여러 번 지나도 그 명령의 before/after는 한 쌍으로 정리한다.
+- pointer capture를 사용한다. 캔버스 밖에서 놓으면 보이는 범위까지만 확정하고, `pointercancel` 또는 확정 전 Escape는 전체 드래프트를 취소한다.
+- 선택 영역이 있으면 그리기/지우기도 그 사각형 내부로 제한한다. 변경된 픽셀이 없으면 revision을 만들지 않는다.
+- 동시에 진행되는 픽셀 드래프트는 하나다. 확정된 자산 상태와 분리하고 저장/내보내기에는 확정 상태만 사용한다. 드래프트 도중 도구/글리프/작업 전환이나 undo/redo/과거 복원을 요청하면 드래프트를 취소한 뒤 요청을 수행한다. Escape는 진행 중 드래프트 취소를 선택 해제보다 우선한다.
 
----
+### 9.3. 영역 선택
 
-## 12. Acceptance criteria
+- 사각형 선택 하나를 지원한다. 선택 자체는 픽셀 변경이나 revision이 아니다.
+- 시작/끝 픽셀을 포함하는 직사각형을 만들고 내부 표현은 끝 제외 `[x0,x1) × [y0,y1)`로 통일한다. 클릭만 하면 1픽셀 선택이다.
+- 선택은 자기 레이어의 현재 글리프 크기로 제한한다. 전체 PNG나 합성 부모의 크기까지 확장하지 않는다.
+- `전체 선택`은 현재 글리프의 자기 추출 영역 전체를 뜻한다.
+- Escape로 선택 해제. 다른 글리프/작업으로 이동하거나 history 복원/undo/redo를 수행하면 선택을 해제한다.
 
-The first version is acceptable when all of the following are true:
+### 9.4. 이동의 정확한 픽셀 의미
 
-1. A user can open the existing example definition set.
-2. Selecting a group shows its own description and all direct child descriptions.
-3. Child descriptions are visible next to child names without opening another screen first.
-4. Editing a group updates affected-glyph preview immediately.
-5. Undo restores the previous state for the supported edit types.
-6. Export produces updated files without requiring a server.
-7. The editor works from the repository's current sample data without renaming or restructuring it.
+- 선택한 영역을 이동 도구의 드래그 또는 방향키로 정수 픽셀만큼 옮긴다. 선택 없이 이동을 시도하면 먼저 선택하도록 안내한다. 전체 글리프 이동은 전체 선택 후 같은 기능으로 수행한다.
+- **선언의 임포트 오프셋이나 텍스처 추출 좌표를 수정하는 동작이 아니다. PNG 안의 픽셀을 옮긴다.**
+- 이동 시작 시 선택 영역을 별도 버퍼로 복사하고, 임시 결과에서 원래 사각형을 투명으로 비운 뒤 목적지에 복사한다.
+- 목적지 복사는 source-over가 아니라 **투명 픽셀까지 포함한 사각형 덮어쓰기**다. 목적지의 기존 검정 픽셀이 선택 영역의 투명 픽셀로 지워질 수 있다.
+- 원본/목적지가 겹쳐도 이동 시작 스냅샷을 사용한다. 이동 중인 버퍼를 반복해서 읽어 획이 늘어나는 오류가 없어야 한다.
+- 선택 사각형 전체가 현재 글리프 안에 남도록 이동량을 clamp한다. 바깥으로 잘라 버리거나 옆 글리프에 쓰거나 반대편으로 순환하지 않는다.
+- 마우스 드래그는 놓을 때 1명령, 방향키는 누름~놓음의 자동 반복을 합쳐 1명령이다. 이동량 0 또는 결과 픽셀 불변이면 revision이 없다.
+- 이동 미리보기는 드래프트다. 확정 전 Escape는 원상복구하며 이력에 남지 않는다. 확정 후 선택 사각형은 목적지로 옮겨진다.
+- 선택 영역 지우기는 해당 자기 픽셀을 투명화하는 1명령이며 undo가 가능하다. 보기 전용 레이어는 영향을 받지 않는다.
 
----
+### 9.5. 캔버스 조작과 단축키
 
-## 13. Out-of-scope questions to resolve later
+- 정수 확대 배율 1/2/4/8/12/16/24/32배, 기본 16배와 픽셀 격자 켜기/끄기를 제공한다. 비트맵 확대는 최근접 이웃이다.
+- 공간이 부족하면 캔버스 스크롤/Space+드래그로 시점을 옮긴다. 시점 이동은 픽셀 이동과 다른 동작이다.
+- 연필 B, 지우개 E, 선택 S, 이동 V, 전체 선택 Ctrl/Cmd+A, 선택 지우기 Delete/Backspace, undo Ctrl/Cmd+Z, redo Ctrl/Cmd+Shift+Z를 제공한다.
+- Ctrl/Cmd+S는 브라우저 작업 저장 요청이지 OS 원본 파일 덮어쓰기가 아니다.
+- 픽셀 편집 단축키는 캔버스에 포커스가 있을 때만 처리한다. 검색/설명/미리보기 입력칸에서 방향키·Delete·Ctrl+Z를 가로채지 않는다.
 
-- Final on-disk project file format
-- Exact diff presentation for before/after comparison
-- Whether description editing supports multi-line text in v1.0
-- Whether search will also index glyph metadata beyond name, index, and Unicode mapping
+## 10. 보기 레이어와 결과 문맥
 
----
+- 편집 보드는 현재 그룹의 자기 레이어와 읽기 전용 자식 레이어를 조합해 보여준다. 자기 레이어 단독 보기를 제공한다.
+- 발생 건별로 표시/숨기기를 토글한다. 중간 그룹을 숨기면 그 배치 아래 전체가 보기에서 숨겨진다. 같은 원본의 다른 배치는 그대로다.
+- 자기 레이어를 숨기면 실수 방지를 위해 연필/지우기/이동을 비활성화한다. 다시 켜면 원래 편집 가능 조건을 적용한다.
+- 레이어 가시성은 현재 검사 문맥의 보기 설정일 뿐, 선언/PNG/히스토리의 픽셀 변경이 아니다.
+- 별도 결과 미리보기에서는 모든 선언 레이어를 포함한 정상 합성 결과를 확인할 수 있다. 미리보기 문구와 실제 변경 판정도 정상 합성 결과를 사용한다.
+- Unicode에서 부품으로 내려온 경우 결과 문맥 미리보기에 출발한 글자의 최신 전체 결과를 유지한다. 부품만 확대해 보면서 완성 글자를 함께 확인할 수 있어야 한다.
 
-## 14. Open design decisions
+## 11. 외부 폰트 섀도
 
-- Should child descriptions also appear inside the preview pane, or only in the hierarchy/detail panes?
-- Should empty descriptions be styled as warnings, or simply as blank states?
-- Should undo history persist across page reloads, or remain session-only?
+- `.ttf`, `.otf`, `.woff`를 필수 입력으로 받는다. WOFF는 WOFF1을 뜻한다. WOFF2, TTC/OTC 컬렉션은 이 버전에서 지원하지 않으며 입력 시 이유를 표시한다. 폰트 입력 실패가 기존 PNG 편집을 막아서는 안 된다.
+- 폰트는 **보기 전용 반투명 밑그림**이다. 외곽선을 추출해 픽셀에 붙여넣거나 작업 PNG를 교체하지 않는다.
+- `FontFace` 등 브라우저 렌더러로 화면에 그릴 수 있다. 실제 파일의 로딩 성공을 기다리고, 고유한 내부 family 이름을 사용해 설치 폰트와 혼동하지 않는다.
+- SFNT/WOFF의 Unicode cmap 형식 4/12를 읽어 해당 코드 포인트의 glyph ID가 0이 아닌지 확인한다. 이 판정에 `document.fonts.check()`나 시스템 폰트와의 폭 비교를 사용하지 않는다. 지원하는 Unicode cmap이 없으면 그 이유로 폰트 입력을 거부한다.
+- 참조 폰트에 글자가 없으면 `참고 폰트에 글자 없음`을 표시하고 섀도를 그리지 않는다. 시스템 폰트 폴백을 그 파일의 글리프인 것처럼 보여주지 않는다.
+- 선택한 Unicode 결과 문맥을 기준으로 섀도를 표시한다. Unicode 없는 부품을 그룹 목록에서 직접 열었고 사용처 문맥도 고르지 않았다면 `사용처 글자를 선택하세요`를 표시한다. 호환 자모로 임의 대응하지 않는다.
+- 섀도는 결과 문맥의 논리 좌표에 그린다. 부품의 로컬 편집 좌표에 부모 전체 글자를 무조건 겹치지 않는다.
+- 폰트 크기, x/y 오프셋, 불투명도, 표시 토글을 제공한다. 크기는 0.25..1,024, 각 오프셋은 -4,096..4,096 논리 픽셀 범위에서 0.25 단위로 조절한다. 불투명도는 0..1이다. 선언 오프셋과는 별개이며 유효하지 않은 숫자를 그대로 렌더러에 넘기지 않는다.
+- 기본 크기는 `min(1,024, 결과 그룹 높이)`만큼의 CSS em 픽셀, 기본 x/y는 0, 불투명도는 0.25다. 좌상단 기준(`textAlign=left`, `textBaseline=top`)으로 시작하고 사용자가 보정한다. 비율을 강제로 글리프 박스에 늘려 맞추지 않는다.
+- 폰트 파일과 설정은 작업의 브라우저 저장에 포함한다. 폰트 로딩이나 표시 설정 변경은 픽셀 revision을 만들지 않는다.
 
----
+## 12. 문구 미리보기와 변경 영향
 
-## 15. Appendix: UI copy requirement
+### 12.1. 편집 가능한 문구 미리보기
 
-Any empty description must be shown explicitly. Suggested label: `(no description)`.
+다음 기본 문구를 선택할 수 있고 사용자가 전체 내용을 바꿀 수 있어야 한다.
+
+- 한글 예문: `다람쥐 헌 쳇바퀴에 타고파.`
+- 영문 팬그램: `The quick brown fox jumps over the lazy dog.`
+- 숫자/기호: `0123456789 !? @#$% &* () [] {} +-*/ = < >`
+
+문구는 선언의 매핑으로 직접 렌더링한다. 폰트 출력/커닝/셰이핑 결과라고 주장하지 않는다.
+
+- 매핑된 글자의 전진폭은 그 결과 그룹의 가로 크기다. 줄 높이는 현재 문구가 아니라 선언의 모든 Unicode 매핑 결과 그룹에서 구한 최대 세로 크기로 고정하고, 글자는 줄 위쪽 정렬한다. 아래의 미매핑 대체 박스도 같은 전체 매핑 결과의 최대 가로/세로 크기를 사용한다.
+- CRLF와 단독 CR은 LF로 바꾼다. 다른 Unicode 정규화나 자모 조합은 하지 않는다. 보조 평면 문자를 포함해 스칼라 값으로 순회한다.
+- 미매핑 문자는 U+0000 매핑이 있으면 그 글리프/폭으로 대체한다. 없으면 매핑 그룹의 최대 크기인 빈 테두리 박스를 사용한다. 지원하지 않는 문자 목록도 별도로 표시한다.
+- U+0000이 빈 글리프여도 유효한 대체이며 테두리 박스를 추가하지 않는다. 탭은 임의 공백 폭으로 확장하지 않고 같은 매핑 규칙을 따른다.
+- 입력을 빈 문자열로 지울 수 있다. 이때 빈 미리보기이며 오류 팝업을 반복하지 않는다. 선언에 매핑이 없으면 안내 상태다.
+- 1배 실제 크기와 정수 확대 보기를 제공한다. 섀도/격자/선택선 등 편집 보조 표시는 기본 문구 이미지에 포함하지 않는다.
+- 붓질/이동 드래프트 동안 결과 문맥과 화면에 있는 미리보기 글자들을 갱신한다. 문구를 입력할 때마다 전체 Unicode를 래스터화하지 않는다.
+
+### 12.2. 사용처와 이번 변경의 영향 구분
+
+다음 세 항목을 다른 이름으로 표시한다.
+
+1. `부품 사용처`: 현재 그룹 글리프의 구조적 Unicode 사용처. 현재 그림이나 최근 명령과 무관하다.
+2. `영향 가능 문자`: 선택한 픽셀 명령의 실제 변경 좌표를 읽는 모든 그룹 글리프와 그 상위 Unicode의 합집합.
+3. `실제 모양 변경`: 영향 가능 문자 중 명령 전후의 정상 전체 합성 픽셀이 실제로 다른 문자.
+
+같은 PNG의 **겹치는 추출 사각형**이나 같은 이미지 경로의 소스 별칭도 2번에 포함한다. 선택한 그룹의 역참조만 갱신해서는 안 된다. 각 목록은 Unicode 별칭을 포함해 코드 포인트별 중복 제거하고, 총 개수·검색·페이지네이션·이동을 제공한다.
+
+불투명 상위 레이어에 가려지거나 중간 클리핑으로 잘린 부품은 2번에는 있어도 3번에는 없을 수 있다. 리소스가 없어 3번을 판정할 수 없으면 `판정 불가`로 구분하며 0개 변경으로 단정하지 않는다.
+
+2번/3번의 기본 대상은 현재 revision을 만든 명령의 부모 상태 → 그 revision 상태다. undo/redo로 현재 revision이 바뀌면 대상을 함께 바꾸고, 원본 상태에서는 `변경 명령 없음`으로 표시한다. 히스토리에서 다른 명령을 지정해 그 명령의 전후를 조사할 수도 있다. 원본 → 현재의 누적 비교는 13절 diff의 비교 기준으로 제공한다.
+
+편집 중에는 1번/현재 미리보기를 즉시 갱신하고 2번/3번의 전수 판정은 명령 확정 뒤 수행한다. 계산 중 상태와 해당 revision을 표시하고, 오래된 비동기 결과로 최신 목록을 덮어쓰지 않는다.
+
+## 13. diff와 어니언 스킨
+
+- diff와 어니언 스킨은 각각 `최초 원본` 또는 저장된 revision을 비교 기준으로 선택한다. 기본은 둘 다 최초 원본이다. 두 기준을 서로 다르게 고를 수 있고, 기준을 바꿔도 현재 픽셀은 바뀌지 않는다.
+- diff, 어니언 스킨, 외부 폰트 섀도는 **각각 독립된 표시 토글과 설정**을 가진다. 하나를 켰다고 다른 기능을 강제로 끄지 않는다.
+- 텍스처 있는 그룹의 편집 보드에서는 자기 추출 픽셀끼리 비교한다. 결과 문맥에서는 같은 그룹/인덱스의 정상 합성 결과끼리 비교한다. 어느 범위를 비교하는지 라벨을 표시한다.
+- 비교 양쪽은 동일한 크기/원점이다. 배율, 선택선, 배경, 격자, 레이어 숨김, 섀도 때문에 차이가 생긴 것으로 계산하지 않는다.
+
+### 13.1. 픽셀 diff
+
+- 기준 투명 → 현재 비투명은 `추가`(녹색), 기준 비투명 → 현재 투명은 `삭제`(적색)로 표시한다.
+- 둘 다 비투명이지만 RGBA가 달라졌으면 `변경`(주황색)으로 표시한다. 완전투명 픽셀끼리의 숨은 RGB 차이는 무시한다.
+- 변하지 않은 픽셀은 원래 모습으로 표시하고 추가/삭제/변경 개수와 범례를 제공한다.
+- diff의 색이 검정/투명 편집 팔레트를 확장하는 것은 아니다. 내보내는 PNG에 저장하지 않는다.
+
+### 13.2. 어니언 스킨
+
+- 기준 이미지를 별도 색조의 반투명 레이어로 현재 이미지 위에 겹친다. 기본 불투명도 0.25, 조절 가능.
+- 현재 지운 획도 기준 레이어로 볼 수 있어야 한다. diff와 달리 일치/불일치를 판정해 지우지 않는다.
+- 현재 픽셀, 비교 기준, 섀도 레이어는 서로 다른 데이터다. 어니언 스킨을 켠 채로 그려도 원본/기준 픽셀은 수정되지 않는다.
+
+## 14. 영속 히스토리와 복원
+
+### 14.1. 명령과 revision
+
+- 작업 전체의 공통 히스토리를 사용한다. PNG별로 분리해 다른 이미지의 undo를 잃게 하지 않는다.
+- 픽셀 명령에는 revision ID, parent revision ID, 시각, 종류, 자산별 변경 픽셀의 before/after를 저장한다. 그룹에서 시작한 명령은 시작 그룹/인덱스를 함께 기록한다. 일괄 PNG 교체나 작업 전체 복원처럼 특정 글리프에서 시작하지 않은 명령은 이 값을 null로 두고, 대상 자산 경로와 물리 변경 영역을 기록한다.
+- 같은 명령에서 자산 여러 개를 바꾸는 경우 하나의 원자적 명령이다. 순서대로 일부만 복원하지 않는다.
+- 이미지가 동일해지는 no-op, 선택/탐색/확대/가시성 변경, 참고 폰트 조절은 픽셀 revision을 만들지 않는다.
+- 원본은 revision 0에 해당한다. 늦게 연결된 자산의 원본 취급은 5.4절을 따른다.
+
+### 14.2. undo/redo와 과거 분기 보존
+
+- undo는 현재 revision의 부모로, redo는 그 자식으로 이동한다. 원본에서 undo는 비활성이다.
+- undo 후 새 편집을 하면 새 자식 revision을 만든다. 이전 redo 경로의 revision은 삭제하지 않고 히스토리 목록에서 계속 조회/복원할 수 있게 한다.
+- 자식이 여러 개일 때 redo는 사용자가 마지막으로 방문한 자식을 우선하고, 기록이 없으면 생성 순서상 가장 최신 자식을 사용한다.
+- UI에는 시간순 이력 목록, 현재 상태 표시, 현재 경로/다른 분기 구분을 제공한다. 복잡한 브랜치 관리 GUI는 필요 없다.
+- 현재 revision과 redo 선택도 저장해 페이지를 다시 열었을 때 다른 상태로 바뀌지 않게 한다.
+
+### 14.3. 확인과 복원은 다른 동작
+
+- 이력을 선택하면 읽기 전용 이전 상태 미리보기와 `diff 기준으로 사용`/`어니언 기준으로 사용`을 제공한다. 단순 조회가 현재 작업을 되돌리지 않는다.
+- `이 상태로 복원`을 누르면 현재 자산 전체와 선택 revision의 차이를 **새 복원 명령**으로 현재 revision 뒤에 기록한다. 이전/이후 이력을 삭제하거나 원본을 재설정하지 않는다.
+- 복원 명령을 undo하면 복원 직전 작업으로 돌아간다. 수정이 없는 복원은 no-op이다.
+- 복원은 선택한 글리프 한 개가 아니라 작업의 모든 PNG 상태에 적용된다는 점을 버튼 근처에 표시한다.
+- 이력 항목에서 시작 그룹/인덱스가 있는 명령은 그 그룹/영역으로 이동할 수 있어야 한다. 이 정보가 없는 명령은 해당 PNG의 소스 연결 정보와 물리 변경 좌표 요약을 보여준다. 임의의 그룹/인덱스를 만들어 연결하지 않는다. 초기 연결 이후 선언이 바뀌지 않으므로 과거의 인덱스 의미도 유지된다.
+
+### 14.4. 보존 정책
+
+- 히스토리는 세션이 끝나도 IndexedDB에 보관한다. 임의로 최근 100개만 남기거나 새로고침 시 지우지 않는다.
+- 체크포인트/압축은 허용하지만 사용자가 볼 수 있는 revision과 원본을 자동 삭제하지 않는다.
+- 작업 삭제만 명시적 사용자 확인 후 수행한다. 삭제는 그 작업의 선언/PNG/히스토리/참고 폰트에 한정하며 다른 작업에 영향을 주지 않는다.
+- 저장 용량이 부족하면 이유와 대응 동작을 보여준다. 기록을 몰래 버려 성공한 것처럼 처리하지 않는다.
+
+## 15. 브라우저 저장과 실패 처리
+
+- 큰 픽셀/PNG/히스토리 데이터는 IndexedDB를 사용한다. localStorage에 base64 이미지 전체를 넣지 않는다.
+- 픽셀 명령 확정마다 revision, 현재 head, 변경 자산 상태를 같은 IndexedDB 트랜잭션으로 저장한다. undo/redo도 head, redo 선택, 자산 상태를 함께 원자적으로 저장한다. 드래그의 매 포인터 이동을 영속 revision으로 만들지 않는다.
+- 화면에는 `변경 없음`, `저장 중`, `브라우저에 저장됨`, `저장 실패`, `임시 작업`을 구분한다. 데이터베이스 트랜잭션 성공 전에는 저장 성공을 표시하지 않는다.
+- 명령 저장이 실패해도 화면의 최신 편집 데이터를 즉시 버리지 않는다. 그 상태를 보관하고 `다시 저장`, `PNG 내보내기`, `임시 작업으로 계속`을 제공한다. 사용자가 선택하기 전에는 후속 픽셀 명령을 막아 실패 상태를 명확히 한다.
+- IndexedDB를 처음부터 사용할 수 없으면 명시적 임시 모드로 작업할 수 있다. 이 경우 이력은 메모리에만 남으며 영속 저장 성공으로 표시하지 않는다.
+- 브라우저 저장은 같은 브라우저 프로필/오리진에 한정된다. 사이트 데이터 삭제, 다른 브라우저/도메인으로의 이동 시 자동 이전을 보장하지 않는다. PNG/ZIP에 히스토리가 들어 있지 않다는 설명을 저장 화면에 둔다.
+- 최근 작업 목록에는 이름, 선언 파일명, 수정 시각, 이미지 수, revision 수를 보여주고 열기/이름 변경/삭제를 제공한다. 이름 변경은 선언 `metadata.name`을 수정하지 않는다.
+- 같은 작업을 여러 탭에서 동시에 수정하지 않도록 단일 작성자 잠금을 사용한다. 두 번째 탭은 보기/내보내기만 가능하고, 기존 작성 탭이 닫힌 뒤 잠금을 넘겨받을 수 있어야 한다. 브라우저 저장을 나중 탭이 조용히 덮어쓰면 안 된다.
+- 스키마 버전을 기록한다. 알 수 없는 더 높은 버전이나 손상된 저장 데이터를 초기화/삭제하지 말고 오류를 표시한다. 기존 데이터를 그대로 보존한 채 다른 작업을 열 수 있어야 한다.
+
+## 16. PNG/ZIP 내보내기
+
+- `선택한 텍스처 PNG`, `변경된 PNG들을 ZIP`, `연결된 PNG 전체를 ZIP`을 제공한다. 변경 ZIP의 대상은 최초 원본과 현재 픽셀이 다른 자산이며, 최근 내보내기 상태와 비교하지 않는다. 변경된 자산이 없으면 변경 ZIP 버튼은 비활성이다.
+- PNG 한 장 내보내기는 현재 글리프의 잘린 그림이 아니라 **해당 원본 텍스처 한 장의 전체 크기 이미지**다.
+- ZIP은 일반 PNG 항목만 포함한다. 선언 JSON, 히스토리, 브라우저 설정, manifest, 참고 폰트, 썸네일은 넣지 않는다.
+- ZIP 항목 경로는 선언의 정규화한 논리 이미지 경로를 유지한다. 서로 다른 폴더의 같은 basename을 하나로 합치거나 덮어쓰지 않는다.
+- 같은 논리 자산의 여러 소스 별칭은 PNG 하나로 내보낸다. ZIP 항목은 경로의 사전순으로 정렬한다.
+- 단일 PNG의 다운로드 파일명은 원래 basename을 사용한다. ZIP 파일명은 안전한 작업 표시 이름에 `-textures.zip`을 붙인다. 작업명을 바꿔도 ZIP 내부 이미지 경로는 바뀌지 않는다.
+- 이미지의 가로/세로를 바꾸지 않고, 편집하지 않은 영역을 잘라내거나 격자/배경/섀도/diff를 합성하지 않는다. 투명 픽셀은 투명으로 내보낸다.
+- 저장 PNG는 RGBA를 담는 일반 PNG면 충분하다. 1비트 PNG 인코딩을 강제하지 않으며, PNG의 바이트 동일성 대신 디코딩 픽셀/크기 동일성을 검사한다.
+- 내보내기는 원본 비교 기준, 히스토리, 현재 revision을 재설정하지 않는다. 같은 작업을 계속 편집할 수 있다.
+- `원본 대비 변경`, `브라우저 저장 상태`, `최근 내보낸 이미지 대비 변경`을 구분한다. 동일 픽셀로 되돌린 경우에는 실제 이미지 비교로 변경 표시를 지운다.
+- 파일 생성이 모두 성공한 뒤 다운로드를 요청한다. ZIP 생성 중 실패했는데 일부 묶음을 성공 결과로 제공하지 않는다. 다운로드 요청을 OS 디스크 저장 완료로 보장하는 문구는 사용하지 않는다.
+- 내보낸 파일은 다른 브라우저에서 원래 선언과 함께 다시 불러와 편집할 수 있어야 한다. 그때 새 작업의 원본은 그 PNG이고 예전 브라우저의 이력은 따라오지 않는다.
+
+## 17. 화면 구성, 성능, 자원 한계
+
+### 17.1. 필수 화면 구역
+
+배치의 세부 스타일은 자유지만 최소 1280×720 데스크톱 화면에서 다음에 접근할 수 있어야 한다. 큰 내용은 패널별 스크롤/접기를 사용한다.
+
+1. 상단: 작업 열기/불러오기, 소스 연결, 저장 상태, 내보내기.
+2. 탐색: 문자 셋/검색/페이지와 그룹/인덱스 탐색.
+3. 중앙: 픽셀 편집 보드, 도구, 확대, 선택/이동 상태, 결과 문맥 미리보기.
+4. 정보: 현재/자식 description, 레이어 발생 건, 구조적 사용처와 변경 영향.
+5. 비교/이력: 기준 선택, diff/어니언/폰트 섀도 설정, revision 목록과 복원.
+6. 문구 미리보기: 수정 가능한 입력, 팬그램 선택, 1배/확대 결과.
+
+새 작업/파일 교체/저장 실패/삭제처럼 데이터가 바뀌는 동작은 이유와 선택지가 명확해야 한다. 모든 기능을 키 조합으로만 숨기지 말고 버튼/메뉴에서도 접근하게 한다.
+
+### 17.2. 캐시와 갱신
+
+- 선언 로드 시 Unicode 맵, 그룹 글리프의 배치/역참조, PNG 추출 사각형→그룹 글리프 관계를 계산한다. 한글 8×4×4 분류를 별도 하드코딩하지 않는다.
+- 물리 PNG 변경 좌표와 겹치는 모든 추출 사각형 및 그 상위 합성 캐시를 무효화한다. 같은 소스 경로 별칭, 부분적으로 겹치는 사각형, 중복 배치도 처리한다.
+- 화면에 있는 썸네일/결과/미리보기를 우선 갱신한다. 11,267개 캔버스 DOM을 한 번에 만들거나 매 붓질마다 모두 다시 그리지 않는다.
+- 탐색 인덱스와 전체 영향 판정은 UI를 오래 막지 않도록 작업을 나누거나 Worker를 사용할 수 있다. 계산 중 취소/새 입력으로 오래된 결과를 폐기할 수 있어야 한다.
+- 실제 DPR/CSS 확대가 논리 픽셀의 클릭 좌표를 바꾸면 안 된다. 디스플레이 배율이 달라도 동일 좌표를 편집한다.
+
+### 17.3. 명시적 자원 한계
+
+지원 범위를 넘으면 일부분만 읽지 말고 대상과 한계를 표시한다. 다음을 기본 상수로 둔다.
+
+| 항목 | 최대 |
+| --- | ---: |
+| 선언 JSON | 8 MiB |
+| 그룹 수 / 전체 그룹 글리프 수 합계 | 4,096 / 1,000,000 |
+| 모든 임포트 규칙의 확장 배치 수 합계 | 2,000,000 |
+| 임포트 그래프 깊이 | 128 |
+| PNG 또는 단일 그룹 결과 캔버스 한 변 / 픽셀 수 | 8,192 / 16,777,216 |
+| 연결된 모든 PNG 픽셀 수 합계 | 33,554,432 |
+| 작업의 PNG 자산 수 | 128 |
+| 단일 입력 PNG 파일 / 한 번에 가져오는 PNG 파일 바이트 합계 | 80 MiB / 256 MiB |
+| 입력 ZIP 크기 / 전체 압축 해제 바이트 | 256 MiB / 256 MiB |
+| ZIP 파일 항목 수 | 512 |
+| 참고 폰트 파일 | 32 MiB |
+| 문구 미리보기 | 4,096 Unicode 스칼라 값, 최종 캔버스 한 변 32,768 및 총 16,777,216 픽셀 |
+
+배치 수/깊이/파일 크기는 가능한 한 확장·할당 전에 확인한다. 단일 그룹 결과의 크기 한계는 자기 텍스처가 없는 그룹과 모든 중간 합성 표면에도 동일하게 적용한다. 범위를 넘는 결과는 표면 할당 전에 자원 오류로 표시하되 선언의 구조 탐색은 보존한다. DAG의 중첩 중복으로 한 글리프의 배치 트리 전개가 2,000,000건을 넘으면 그 미리보기/사용처의 자원 한계 오류를 표시한다. 히스토리는 고정 개수로 잘라내지 않고 저장소 한도 실패 규칙을 따른다.
+
+PNG 내보내기는 비인터레이스 8비트 RGBA의 새 PNG로 인코딩하며 불필요한 입력 메타데이터/패딩을 복제하지 않는다. 위 총 픽셀 수 안의 PNG를 모두 내보낸 ZIP도 입력의 256 MiB/항목/이미지 한도 안에 들어 재가져올 수 있어야 한다. 압축이 잘 안 되는 입력 때문에 자체 내보내기 파일이 입력 제한에 걸리는 구현은 허용하지 않는다. 무작위 RGBA 등 저압축률 이미지 여러 장의 ZIP 왕복도 테스트한다.
+
+예제 규모의 기본 동작은 4코어/8GB 데스크톱 최신 Chromium에서 확인한다. 로컬 파일 선택 완료 후 선언 인덱스 구성 5초 이내, 첫 페이지/선택 글자 표시 1초 이내를 목표로 측정한다. 붓질 중 현재 보드/결과 문맥은 프레임 단위로 갱신하고, 확정 뒤 실제 영향 판정은 계산 상태를 표시한다. 성능을 이유로 정확한 전체 개수를 첫 200개로 대신해서는 안 된다.
+
+## 18. 구현 산출물과 테스트 계약
+
+### 18.1. 산출물
+
+구현자는 다음을 `tools/editor/` 안에 둔다.
+
+- 정적 앱 `index.html`, CSS, JS 모듈, 내장 유니코드 데이터와 필요한 동봉 라이브러리.
+- 이 명세를 기준으로 한 README: GitHub Pages URL 경로, 로컬 정적 서버로 시험하는 방법, 입력/출력, 저장/이력 주의사항, 지원 폰트/ZIP 범위, 테스트 실행법.
+- 선언/합성/픽셀 명령/히스토리/ZIP 경로 처리의 자동 테스트 및 실제 브라우저 통합 테스트.
+- 외부 라이브러리와 내장 데이터의 출처·라이선스. 생성한 데이터는 재생성 방법.
+
+루트 선언 명세, `examples/` 원본, 검사기, 별도 선언 편집기를 구현 편의로 바꾸지 않는다. 공용 코드를 옮겨 기존 프로그램을 리팩터링하는 작업도 하지 않는다. 이 문서의 경로에 명세만 먼저 존재한다고 구현이 완료된 것으로 보고하지 않는다.
+
+Node.js/npm은 테스트 전용으로 사용할 수 있다. `npm test`는 DOM 없는 핵심 테스트, `npm run test:browser`는 헤드리스 브라우저 통합 테스트를 실행하게 한다. 필요한 개발 의존성과 lockfile을 포함한다. 런타임이나 Pages 배포 전 `npm install`/빌드를 요구하면 안 된다.
+
+### 18.2. 자동 테스트 최소 목록
+
+각 번호는 생략하지 않는 인수 항목이다. 테스트는 테스트 전용 작은 PNG를 생성/동봉하고 픽셀을 직접 비교한다. DOM 텍스트만 검사하고 실제 합성을 검증했다고 주장하지 않는다.
+
+- **T01 선언 정합성:** 엄격 JSON/중복 키/자료형/미지 필드/참조/순환/반복 범위/Unicode 충돌/별칭/U+0000/보조 평면. `__proto__` 같은 이름도 안전하게 처리한다.
+- **T02 이미지 없는 탐색:** 예제 JSON만 불러와 한글 11,172 + ASCII 95 = 11,267 매핑과 그룹/사용처를 조사한다. PNG 미연결 상태를 투명 정상 글리프로 표시하지 않는다.
+- **T03 한글 독립 검증:** 예제 전체를 별도의 8×4×4 분류표와 비교한다. `가`는 initial_0/medial_0, `각`은 여기에 final_0, `나`는 medial_1을 사용한다. 제품 코드에 한글 전용 분기를 넣지 않는다.
+- **T04 합성:** 네 추출 방향, 여러 repeat 축의 순서, 음수 오프셋, 자기 텍스처 첫 레이어, 중복 배치, 중첩 합성과 알파 순서. 중간 2px 그룹에서 잘린 원본의 3번째 픽셀이 더 큰 조부모에서 다시 나타나면 실패다.
+- **T05 경로/연결:** 같은 경로의 셋/소스 별칭, 정규화, 같은 basename의 다른 폴더, 수동 연결, ZIP 접두 폴더, 중복 경로, 누락 PNG, 잘못된 이미지/박스, ZIP 제한과 금지 형식.
+- **T06 편집 경계:** no-texture의 모든 쓰기 차단, 자기+임포트 그룹의 자기만 수정, 추출 사각형 밖 불변, 1px 대입/빠른 드래그 보간/no-op/취소, 원본 불변.
+- **T07 선택 이동:** 겹치는 이동의 스냅샷 사용, 투명 포함 덮어쓰기, 글리프 경계 clamp, 포인터 취소, 방향키 반복의 1명령 처리. 1차원 픽셀 `[1,0,1,1,0]`에서 `[0,2)`를 +2 이동한 결과는 `[0,0,1,0,0]`이어야 한다(1=검정, 0=투명).
+- **T08 공유 이미지:** G의 추출 `[0,2)`, H의 추출 `[1,3)`이 같은 PNG를 사용하면 물리 x=1 수정 시 둘 다 변경/캐시 무효화된다. G/H가 별도 Unicode에 매핑된 경우 양쪽 영향 목록에 나타나야 한다.
+- **T09 사용처/실제 변경:** 투명 또는 완전히 잘린 참조, 가려진 레이어, 중복 발생 건, Unicode 별칭을 포함해 구조적 사용처/가능 영향/실제 변경의 차이를 검증한다. 누락 리소스는 판정 불가다.
+- **T10 셋/페이지/검색:** 표의 셋 크기, KS X 1001 고유 2,350자, 매핑 필터, 미매핑 상태, 마지막 페이지, 검색 후 페이지 리셋, 코드 포인트/그룹 인덱스 바로가기와 보조 평면 검색.
+- **T11 설명/이동 UI:** 현재/직계 자식 description 원문, 설명 없음, 현재 인덱스 미참여 자식, 정확한 자식 발생 건 이동, 출발 Unicode 문맥 유지, 사용처에서 복귀.
+- **T12 보기 독립성:** 레이어 숨김이 원본/선언/픽셀 이력을 바꾸지 않는다. 중복 배치 체크박스가 독립이며 자기 레이어 숨김 시 쓰기 차단. 섀도/diff/onion을 동시에 켜도 내보낸 PNG는 같다.
+- **T13 폰트 섀도:** 실제 TTF/WOFF 로딩, cmap에 있는/없는 문자, 폴백 미표시, 실패 시 상태, Unicode 없는 부품의 문맥 선택, 크기/오프셋/불투명도. 폰트 스크린샷의 OS별 픽셀 일치는 요구하지 않는다.
+- **T14 문구:** 수정/빈 입력, 여러 줄/마지막 빈 줄/CRLF, 혼합 크기 그룹, 실제 NUL 대체, 미매핑 박스, 원본 픽셀 수정의 실시간 반영, 문구 입력칸의 Ctrl+Z가 픽셀 이력을 바꾸지 않음.
+- **T15 diff/onion:** 원본/임의 revision, 추가/삭제/변경 개수, 투명 RGB 무시, 자기 픽셀과 결과 문맥의 구분, 독립 토글, 기준 선택이 현재 상태를 바꾸지 않음.
+- **T16 영속 히스토리:** 다른 PNG에 순차 편집한 뒤 undo/redo, undo 후 새 분기와 이전 분기 보존, 복원 명령/복원 undo, 늦은 자산 연결, 재접속 후 전체 이력/현재 head 보존.
+- **T17 저장 장애:** IndexedDB 불가, 트랜잭션/용량 실패, 저장 중/성공/실패 표시, 메모리 최신 상태 유지, 재시도/내보내기/임시모드, 손상 데이터 보존, 동시 탭 충돌 차단.
+- **T18 내보내기:** 전체 텍스처 크기, 다른 그룹/미사용 영역 보존, ZIP 경로/별칭 중복 제거, PNG만 포함, 단일 PNG/ZIP 재가져오기 픽셀 일치, 저압축률 대형 PNG 여러 장의 자체 ZIP 왕복/용량 제한 정합성, 내보내기로 원본/이력 불변, 오류 묶음을 성공으로 내보내지 않음.
+- **T19 Pages 환경:** 저장소 하위 경로에 띄운 실제 브라우저에서 상대 경로로 전체 기능 사용, 앱 로드 후 네트워크를 막아도 수동 파일 작업/저장/내보내기 가능, 잘못된 원격 API/CDN 요청 0회.
+
+### 18.3. 완료 판정과 보고
+
+완료하려면 다음을 모두 충족해야 한다.
+
+1. T01..T19의 자동/브라우저 테스트 결과와 실행 명령을 제시한다. 테스트가 어려운 항목을 생략한 채 통과라고 쓰지 않는다.
+2. ASCII 예제와 한글+ASCII 예제로 각각 로드 → 검색 → 부품 이동 → 픽셀/영역 이동 → 영향 확인 → undo/redo → 재접속 → 과거 복원 → PNG/ZIP 내보내기 → 재가져오기 흐름을 확인한다.
+3. Chromium과 Firefox에서 수동 또는 자동 검증한 범위를 명시하고 미검증 범위를 구분한다.
+4. 저장소 변경 내역, 정적 페이지 여는 방법, 기능별 핵심 모듈, 알려진 제한을 보고한다. 스크린샷만으로 기능 완료를 대신하지 않는다.
+5. 핵심 의미/편집/히스토리/저장 코드를 검토할 수 있도록 파일 위치와 책임을 설명한다. 사용자가 생성 코드를 읽고 이해할 수 있는 구조로 유지한다.
+
+미정 상태로 남겨 둘 기능 동작은 없다. 이 문서 안에 실제 충돌이나 구현 불가능한 조건을 발견하면 해당 절과 이유를 구체적으로 보고하고, 임의로 선언 편집기나 서버 앱으로 바꾸거나 사용자 데이터를 버리는 방식으로 해결하지 않는다.
