@@ -92,6 +92,8 @@ JJaim은 텍스처에서 꺼낸 부품을 배치·반복·합성하고, 결과�
 
 선언·PNG·원본 BIN은 [`examples/`](examples/)에 있습니다. 한글의 벌 선택은 [8×4×4벌 참고 문서](docs/about_8x4x4.txt)와 [명세 해설의 한글 예제](https://ywbird.github.io/jjaim/#hangul)를 참고하세요. 한글은 활용 예 중 하나이며, JJaim은 특정 문자 체계나 폰트 출력 형식에 한정되지 않습니다.
 
+예시 텍스처 글꼴 출처: [IT문화원 글꼴 자료](https://ith.kr/about/font2.html).
+
 ## 로컬 실행
 
 ### 브라우저 도구
