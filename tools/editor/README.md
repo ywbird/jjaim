@@ -1,4 +1,4 @@
-# DGC 텍스쳐 편집기
+# JJaim 텍스쳐 편집기
 
 루트 [`SPEC.md`](../../SPEC.md)의 선언을 읽어 글자·부품 관계를 탐색하고, 원본 PNG 텍스처의 픽셀을 직접 고치는 정적 브라우저 앱입니다. 그룹 선언을 편집하는 [`../declaration-editor/`](../declaration-editor/)와는 별도 프로그램입니다. 요구 사항의 정본은 [`SPEC.md`](SPEC.md)입니다.
 

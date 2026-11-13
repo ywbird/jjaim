@@ -108,7 +108,7 @@ try {
   const client = await page.createCDPSession();
   await client.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: downloadDir });
   await page.goto(base, { waitUntil: "networkidle0" });
-  assert.equal(await page.title(), "DGC 텍스쳐 편집기");
+  assert.equal(await page.title(), "JJaim 텍스쳐 편집기");
   assert.equal(await page.$eval('script[src="src/app.js"]', (node, prefix) => node.src.startsWith(prefix), base), true);
 
   await page.setOfflineMode(true);
@@ -318,7 +318,7 @@ try {
     const directPage = await browser.newPage();
     await directPage.setViewport({ width: 1280, height: 720 });
     await directPage.goto(`http://127.0.0.1:${directServer.address().port}/`, { waitUntil: "networkidle0" });
-    assert.equal(await directPage.title(), "DGC 텍스쳐 편집기");
+    assert.equal(await directPage.title(), "JJaim 텍스쳐 편집기");
     await directPage.waitForFunction(() => window.__editor?.state?.workspace === null);
   } finally {
     directServer.close();

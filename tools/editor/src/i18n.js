@@ -2,8 +2,8 @@ const STORAGE_KEY = "declarative-font-editor-language";
 
 const STRINGS = {
   ko: {
-    "app.title": "DGC 텍스쳐 편집기",
-    "app.shortTitle": "DGC 텍스쳐 편집기",
+    "app.title": "JJaim 텍스쳐 편집기",
+    "app.shortTitle": "JJaim 텍스쳐 편집기",
     "nav.toggle": "탐색 패널 접기/펼치기",
     "inspector.toggle": "정보 패널 접기/펼치기",
     "theme.toggle": "다크 모드 전환",
@@ -48,7 +48,7 @@ const STRINGS = {
     "context.compare": "{cp} · 결과 비교",
     "context.result": "{cp} · 결과",
     "context.glyph": "{cp} → {group}[{index}]",
-    "empty.title": "DGC 텍스쳐 편집기",
+    "empty.title": "JJaim 텍스쳐 편집기",
     "empty.body": "선언 JSON을 열고 PNG 텍스처를 연결하세요. 예제는 자동으로 불러오지 않습니다.",
     "tool.pencil": "연필 (B)",
     "tool.eraser": "지우개 (E)",
@@ -200,8 +200,8 @@ const STRINGS = {
     "status.required": "이미지 {width}×{height}, 최소 {required}×{requiredHeight} 필요",
   },
   en: {
-    "app.title": "DGC Texture Editor",
-    "app.shortTitle": "DGC Texture Editor",
+    "app.title": "JJaim Texture Editor",
+    "app.shortTitle": "JJaim Texture Editor",
     "nav.toggle": "Toggle navigation panel",
     "inspector.toggle": "Toggle information panel",
     "theme.toggle": "Toggle dark mode",
@@ -246,7 +246,7 @@ const STRINGS = {
     "context.compare": "{cp} · result comparison",
     "context.result": "{cp} · result",
     "context.glyph": "{cp} → {group}[{index}]",
-    "empty.title": "DGC Texture Editor",
+    "empty.title": "JJaim Texture Editor",
     "empty.body": "Open a declaration JSON and connect PNG textures. Examples are not loaded automatically.",
     "tool.pencil": "Pencil (B)",
     "tool.eraser": "Eraser (E)",
