@@ -300,8 +300,10 @@ try {
   await page.waitForFunction(() => document.documentElement.dataset.theme === "dark");
   await page.waitForFunction((before) => document.querySelector("#child-strip .child-chip canvas").toDataURL() !== before, {}, childLight);
   assert.notEqual(await page.$eval("#child-info canvas", (canvas) => canvas.toDataURL()), inspectorLight);
+  const childDark = await page.$eval("#child-strip .child-chip canvas", (canvas) => canvas.toDataURL());
   await page.click("#theme-toggle");
   await page.waitForFunction(() => document.documentElement.dataset.theme === "light");
+  await page.waitForFunction((before) => document.querySelector("#child-strip .child-chip canvas").toDataURL() !== before, {}, childDark);
   assert.notEqual(await page.$eval("#context", (canvas) => canvas.toDataURL()), beforeContext);
   assert.notEqual(await page.$eval("#board", (canvas) => canvas.toDataURL()), beforeBoard);
   assert.equal(await page.$$eval("#child-info .list-item", (nodes) => nodes.length), 2);
