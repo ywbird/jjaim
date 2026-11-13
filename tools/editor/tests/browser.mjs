@@ -22,6 +22,27 @@ const MIME = {
   ".svg": "image/svg+xml",
 };
 
+function fnvBytes(bytes) {
+  let hash = 2166136261;
+  for (const byte of bytes) {
+    hash ^= byte;
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function pagePixelHash(page, path) {
+  return page.evaluate((assetPath) => {
+    const data = window.__editor.state.workspace.assets.get(assetPath).current;
+    let hash = 2166136261;
+    for (const byte of data) {
+      hash ^= byte;
+      hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+  }, path);
+}
+
 function serve(root) {
   const server = createServer((request, response) => {
     let pathname = decodeURIComponent(new URL(request.url, "http://localhost").pathname);
@@ -115,7 +136,7 @@ try {
   assert.equal(await page.$eval("#empty-open-presets", (node) => node.textContent), "프리셋");
   await page.click("#empty-open-presets");
   await page.waitForFunction(() => document.querySelector("#preset-dialog").open);
-  assert.equal(await page.$$eval("[data-preset]", (nodes) => nodes.length), 2);
+  assert.equal(await page.$$eval("[data-preset-kind]", (nodes) => nodes.length), 2);
   await page.click("#preset-close");
 
   await page.setOfflineMode(true);
@@ -509,17 +530,27 @@ try {
   await presetPage.click("#file-menu-button");
   await presetPage.click("#open-presets");
   await presetPage.waitForFunction(() => document.querySelector("#preset-dialog").open);
-  assert.equal(await presetPage.$$eval("[data-preset]", (nodes) => nodes.length), 2);
-  await presetPage.click('[data-preset="ascii"]');
+  assert.equal(await presetPage.$$eval("[data-preset-kind]", (nodes) => nodes.length), 2);
+  await presetPage.select("#preset-ascii-font", "E2.png");
+  await presetPage.click("#preset-load");
   await presetPage.waitForFunction(() => window.__editor.state.workspace?.fileName === "ascii.json" && window.__editor.state.workspace.assets.has("ascii.png"));
   assert.equal(await presetPage.evaluate(() => window.__editor.state.workspace.declaration.unicodeMap.size), 95);
+  const e2 = await decodePng(readFileSync(join(EDITOR_ROOT, "presets/fonts/E2.png")));
+  assert.equal(await pagePixelHash(presetPage, "ascii.png"), fnvBytes(e2.data));
   assert.equal(await presetPage.$eval("#preset-dialog", (node) => node.open), false);
   await presetPage.click("#file-menu-button");
   await presetPage.click("#open-presets");
-  await presetPage.click('[data-preset="hangul"]');
+  await presetPage.click('[data-preset-kind="hangul"]');
+  await presetPage.select("#preset-hangul-english", "E3.png");
+  await presetPage.select("#preset-hangul-korean", "H03.png");
+  await presetPage.click("#preset-load");
   await presetPage.waitForFunction(() => window.__editor.state.workspace?.fileName === "hangul.json" && window.__editor.state.workspace.assets.has("hangul.png"));
   assert.equal(await presetPage.evaluate(() => window.__editor.state.workspace.declaration.unicodeMap.size), 11267);
   assert.equal(await presetPage.evaluate(() => window.__editor.state.workspace.assets.get("hangul.png").width), 432);
+  const e3 = await decodePng(readFileSync(join(EDITOR_ROOT, "presets/fonts/E3.png")));
+  const h03 = await decodePng(readFileSync(join(EDITOR_ROOT, "presets/fonts/H03.png")));
+  assert.equal(await pagePixelHash(presetPage, "ascii.png"), fnvBytes(e3.data));
+  assert.equal(await pagePixelHash(presetPage, "hangul.png"), fnvBytes(h03.data));
 
   await presetPage.evaluate(() => window.__editor.selectGlyph("initial_0", 0));
   await presetPage.click("#copy-selection");

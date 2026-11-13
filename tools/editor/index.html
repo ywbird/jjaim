@@ -361,17 +361,25 @@
           <button id="preset-close" class="icon-btn" data-i18n-title="common.close" aria-label="닫기"><svg class="icon"><use href="#i-close"/></svg></button>
         </div>
         <p class="muted" data-i18n="presets.note">선언과 텍스처를 함께 불러옵니다. 항상 새 작업으로 엽니다.</p>
-        <div class="preset-list">
-          <button class="preset-card" type="button" data-preset="ascii">
-            <strong data-i18n="presets.ascii">ASCII</strong>
-            <span data-i18n="presets.asciiMeta">Printable ASCII 95자 · 8×16</span>
-          </button>
-          <button class="preset-card" type="button" data-preset="hangul">
-            <strong data-i18n="presets.hangul">한글 + ASCII</strong>
-            <span data-i18n="presets.hangulMeta">한글 완성형 11,172자 + ASCII 95자</span>
-          </button>
+        <div class="preset-kinds" role="group">
+          <button class="preset-kind active" type="button" data-preset-kind="ascii" aria-pressed="true" data-i18n="presets.ascii">ASCII</button>
+          <button class="preset-kind" type="button" data-preset-kind="hangul" aria-pressed="false" data-i18n="presets.hangul">한글 + ASCII</button>
         </div>
-        <div id="preset-report" class="muted"></div>
+        <p id="preset-meta" class="muted"></p>
+        <div id="preset-ascii-fields" class="preset-fields">
+          <label for="preset-ascii-font" data-i18n="presets.englishTexture">영문 텍스처</label>
+          <select id="preset-ascii-font"></select>
+        </div>
+        <div id="preset-hangul-fields" class="preset-fields" hidden>
+          <label for="preset-hangul-english" data-i18n="presets.englishTexture">영문 텍스처</label>
+          <select id="preset-hangul-english"></select>
+          <label for="preset-hangul-korean" data-i18n="presets.koreanTexture">한글 텍스처</label>
+          <select id="preset-hangul-korean"></select>
+        </div>
+        <div class="row">
+          <button id="preset-load" class="primary" type="button" data-i18n="presets.load">프리셋 열기</button>
+          <span id="preset-report" class="muted"></span>
+        </div>
       </div>
     </dialog>
 

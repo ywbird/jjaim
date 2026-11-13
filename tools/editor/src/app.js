@@ -81,6 +81,7 @@ const state = {
   keyMove: null,
   space: false,
   antialias: true,
+  presetKind: "ascii",
   storage: { reading: false, blocked: false, temp: false, readOnly: false, lock: null },
   saveQueue: Promise.resolve(),
   saveToken: 0,
@@ -113,6 +114,13 @@ const els = {
   presetDialog: $("#preset-dialog"),
   presetClose: $("#preset-close"),
   presetReport: $("#preset-report"),
+  presetMeta: $("#preset-meta"),
+  presetAsciiFields: $("#preset-ascii-fields"),
+  presetHangulFields: $("#preset-hangul-fields"),
+  presetAsciiFont: $("#preset-ascii-font"),
+  presetHangulEnglish: $("#preset-hangul-english"),
+  presetHangulKorean: $("#preset-hangul-korean"),
+  presetLoad: $("#preset-load"),
   openProject: $("#open-project"),
   projectFile: $("#project-file"),
   exportProject: $("#export-project"),
@@ -540,17 +548,38 @@ async function openDeclarationFile(file) {
 }
 
 const PRESETS = {
-  ascii: {
-    fileName: "ascii.json",
-    declaration: "presets/ascii.json",
-    textures: ["presets/ascii.png"],
-  },
-  hangul: {
-    fileName: "hangul.json",
-    declaration: "presets/hangul.json",
-    textures: ["presets/ascii.png", "presets/hangul.png"],
-  },
+  ascii: { fileName: "ascii.json", declaration: "presets/ascii.json" },
+  hangul: { fileName: "hangul.json", declaration: "presets/hangul.json" },
 };
+
+const ASCII_TEXTURES = [
+  ["E1.png", "영문굵은멋꼴"],
+  ["E2.png", "영문둥근모꼴"],
+  ["E3.png", "영문버금멋꼴"],
+  ["E4_2.png", "영문버금멋꼴2"],
+  ["E4_3.png", "영문버금멋꼴3"],
+  ["E5.png", "영문틈멋꼴"],
+  ["E6.png", "영문중태깍기꼴"],
+  ["E8.png", "영문중태세모꼴"],
+];
+
+const HANGUL_TEXTURES = [
+  ["H01.png", "굵은달꼴"],
+  ["H02.png", "가는달꼴"],
+  ["H03.png", "버금달꼴"],
+  ["H04.png", "둥근모꼴"],
+  ["H05.png", "짧은둥근모꼴"],
+  ["H06.png", "뫼꼴"],
+  ["H07.png", "짧은뫼꼴"],
+  ["H08.png", "중태세모꼴"],
+  ["H09.png", "뻗음꼴"],
+  ["H10.png", "짧은뻗음꼴"],
+  ["H11.png", "삐침꼴"],
+  ["H12.png", "작은삐침꼴"],
+  ["H13.png", "풀잎꼴"],
+  ["H14.png", "대나무꼴"],
+  ["H15.png", "포갬꼴"],
+];
 
 async function fetchPresetFile(path) {
   const response = await fetch(path);
@@ -558,17 +587,60 @@ async function fetchPresetFile(path) {
   return response;
 }
 
+function populatePresetSelect(select, list) {
+  if (select.options.length) return;
+  for (const [file, name] of list) {
+    select.append(el("option", { value: file, text: `${name} · ${file}` }));
+  }
+  select.value = list[0][0];
+}
+
+function initPresetOptions() {
+  populatePresetSelect(els.presetAsciiFont, ASCII_TEXTURES);
+  populatePresetSelect(els.presetHangulEnglish, ASCII_TEXTURES);
+  populatePresetSelect(els.presetHangulKorean, HANGUL_TEXTURES);
+}
+
+function setPresetKind(kind) {
+  if (!PRESETS[kind]) return;
+  state.presetKind = kind;
+  for (const button of document.querySelectorAll("[data-preset-kind]")) {
+    const active = button.dataset.presetKind === kind;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  }
+  els.presetAsciiFields.hidden = kind !== "ascii";
+  els.presetHangulFields.hidden = kind !== "hangul";
+  els.presetMeta.textContent = t(kind === "ascii" ? "presets.asciiMeta" : "presets.hangulMeta");
+}
+
 function showPresetDialog() {
   els.presetReport.className = "muted";
   els.presetReport.textContent = "";
+  setPresetKind(state.presetKind);
   els.presetDialog.showModal();
 }
 
-async function openPreset(name) {
-  const preset = PRESETS[name];
+async function openPreset() {
+  const kind = state.presetKind;
+  const preset = PRESETS[kind];
   if (!preset) return;
-  const cards = [...document.querySelectorAll("[data-preset]")];
-  cards.forEach((card) => { card.disabled = true; });
+  const english = kind === "ascii" ? els.presetAsciiFont.value : els.presetHangulEnglish.value;
+  const korean = els.presetHangulKorean.value;
+  const textures = kind === "ascii"
+    ? [{ source: `presets/fonts/${english}`, target: "ascii.png" }]
+    : [
+        { source: `presets/fonts/${english}`, target: "ascii.png" },
+        { source: `presets/fonts/${korean}`, target: "hangul.png" },
+      ];
+  const controls = [
+    ...document.querySelectorAll("[data-preset-kind]"),
+    els.presetAsciiFont,
+    els.presetHangulEnglish,
+    els.presetHangulKorean,
+    els.presetLoad,
+  ];
+  controls.forEach((control) => { control.disabled = true; });
   els.presetReport.className = "muted";
   els.presetReport.textContent = t("presets.loading");
   const previous = { selected: state.selected, context: state.context };
@@ -577,9 +649,9 @@ async function openPreset(name) {
     const declaration = parseDeclaration(text, { fileName: preset.fileName });
     const workspace = newWorkspace(declaration, text, preset.fileName);
     const files = [];
-    for (const path of preset.textures) {
-      const buffer = await (await fetchPresetFile(path)).arrayBuffer();
-      files.push(new File([buffer], path.slice(path.lastIndexOf("/") + 1), { type: "image/png" }));
+    for (const texture of textures) {
+      const buffer = await (await fetchPresetFile(texture.source)).arrayBuffer();
+      files.push(new File([buffer], texture.target, { type: "image/png" }));
     }
     const result = await importImages(declaration, workspace.assets, files);
     if (result.errors.length) throw new Error(result.errors.join(" / "));
@@ -594,7 +666,7 @@ async function openPreset(name) {
     els.presetReport.className = "muted error";
     els.presetReport.textContent = t("presets.failed", { message: error.message });
   } finally {
-    cards.forEach((card) => { card.disabled = false; });
+    controls.forEach((control) => { control.disabled = false; });
   }
 }
 
@@ -2325,9 +2397,10 @@ function bindEvents() {
   });
   els.emptyOpenPresets.addEventListener("click", showPresetDialog);
   els.presetClose.addEventListener("click", () => els.presetDialog.close());
-  for (const card of document.querySelectorAll("[data-preset]")) {
-    card.addEventListener("click", () => openPreset(card.dataset.preset));
+  for (const button of document.querySelectorAll("[data-preset-kind]")) {
+    button.addEventListener("click", () => setPresetKind(button.dataset.presetKind));
   }
+  els.presetLoad.addEventListener("click", openPreset);
   els.emptyOpenDeclaration.addEventListener("click", () => els.declarationFile.click());
   els.declarationFile.addEventListener("change", async () => {
     const file = els.declarationFile.files?.[0];
@@ -2710,6 +2783,7 @@ function commitKeyMove() {
 }
 
 initLanguage();
+initPresetOptions();
 els.settingsLanguage.value = getLanguage();
 let initialTheme = "light";
 try {
