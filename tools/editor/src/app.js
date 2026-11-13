@@ -669,7 +669,7 @@ function drawGrid(ctx, image, zoom) {
   if (!state.view.grid || zoom < 8) return;
   const dpr = globalThis.devicePixelRatio || 1;
   ctx.save();
-  ctx.strokeStyle = "rgba(40, 47, 58, 0.22)";
+  ctx.strokeStyle = document.documentElement.dataset.theme === "dark" ? "rgba(230, 232, 236, 0.32)" : "rgba(40, 47, 58, 0.22)";
   ctx.lineWidth = 1;
   for (let x = 1; x < image.width; x += 1) {
     const px = Math.round(x * zoom * dpr) + 0.5;
@@ -693,13 +693,15 @@ function drawSelection(ctx, zoom) {
   const dpr = globalThis.devicePixelRatio || 1;
   const { x, y, width, height } = state.selection;
   ctx.save();
+  const border = Math.max(2, Math.round(2 * dpr));
+  const inset = border / 2;
   ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 1;
-  ctx.setLineDash([4, 2]);
-  ctx.strokeRect(x * zoom * dpr + 0.5, y * zoom * dpr + 0.5, width * zoom * dpr - 1, height * zoom * dpr - 1);
+  ctx.lineWidth = border;
+  ctx.setLineDash([6, 4]);
+  ctx.strokeRect(x * zoom * dpr + inset, y * zoom * dpr + inset, width * zoom * dpr - border, height * zoom * dpr - border);
   ctx.strokeStyle = "#1f5fbf";
-  ctx.lineDashOffset = 4;
-  ctx.strokeRect(x * zoom * dpr + 0.5, y * zoom * dpr + 0.5, width * zoom * dpr - 1, height * zoom * dpr - 1);
+  ctx.lineDashOffset = 5;
+  ctx.strokeRect(x * zoom * dpr + inset, y * zoom * dpr + inset, width * zoom * dpr - border, height * zoom * dpr - border);
   ctx.restore();
 }
 
@@ -1198,6 +1200,13 @@ function scheduleTextPreview() {
 
 // ---------- rendering ----------
 
+function setTool(tool) {
+  state.view.tool = tool;
+  for (const button of document.querySelectorAll("[data-tool]")) button.classList.toggle("active", button.dataset.tool === tool);
+  drawBoard();
+  persist("view");
+}
+
 function updateToolAvailability() {
   const textureEditable = Boolean(ownInfo()?.ok) && !previewId() && !state.storage.readOnly && !state.storage.blocked;
   for (const button of document.querySelectorAll("[data-tool]")) {
@@ -1452,6 +1461,8 @@ function pointerUp(event) {
       state.selection = { ...state.selection, x: state.selection.x + (drag.dx ?? 0), y: state.selection.y + (drag.dy ?? 0) };
     }
     commitDraft();
+  } else if (drag.kind === "select" && state.selection) {
+    setTool("move");
   }
   els.board.releasePointerCapture?.(event.pointerId);
 }
@@ -1872,10 +1883,7 @@ function bindEvents() {
     const tool = event.target.closest("[data-tool]")?.dataset.tool;
     if (!tool) return;
     cancelDraft();
-    state.view.tool = tool;
-    for (const button of document.querySelectorAll("[data-tool]")) button.classList.toggle("active", button.dataset.tool === tool);
-    drawBoard();
-    persist("view");
+    setTool(tool);
   });
   els.zoom.addEventListener("change", () => { state.view.zoom = Number(els.zoom.value); persist("view"); drawBoard(); });
   els.gridToggle.addEventListener("change", () => { state.view.grid = els.gridToggle.checked; persist("view"); drawBoard(); });
@@ -1885,7 +1893,7 @@ function bindEvents() {
     const group = currentGroup();
     if (!group || !ownInfo()?.ok) return;
     state.selection = { x: 0, y: 0, width: group.width, height: group.height };
-    drawBoard();
+    setTool("move");
   });
   els.clearSelection.addEventListener("click", () => { state.selection = null; drawBoard(); });
   els.deleteSelection.addEventListener("click", eraseSelection);
@@ -2074,9 +2082,7 @@ function boardKeydown(event) {
   }
   if (["b", "e", "s", "v"].includes(key.toLowerCase()) && !ctrl) {
     cancelDraft();
-    state.view.tool = { b: "pencil", e: "eraser", s: "select", v: "move" }[key.toLowerCase()];
-    for (const button of document.querySelectorAll("[data-tool]")) button.classList.toggle("active", button.dataset.tool === state.view.tool);
-    drawBoard();
+    setTool({ b: "pencil", e: "eraser", s: "select", v: "move" }[key.toLowerCase()]);
     return;
   }
   if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(key) && state.view.tool === "move" && state.selection) {

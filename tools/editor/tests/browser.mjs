@@ -189,6 +189,15 @@ try {
   const exported = await decodePng(zip.entries[0].data);
   assert.deepEqual([...exported.data], [0, 0, 0, 255, 0, 0, 0, 0]);
 
+  await page.click('[data-tool="select"]');
+  await page.mouse.move(box.x + 4, box.y + 4);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 20, box.y + 12);
+  await page.mouse.up();
+  await page.waitForFunction(() => Boolean(window.__editor.state.selection));
+  assert.equal(await page.evaluate(() => window.__editor.state.view.tool), "move");
+  assert.equal(await page.$eval('[data-tool="move"]', (node) => node.classList.contains("active")), true);
+
   const head = await page.evaluate(() => window.__editor.state.workspace.history.headId);
   await page.evaluate(() => window.__editor.state.storage.lock?.release());
   await page.setOfflineMode(false);
