@@ -9,6 +9,9 @@
 
 ## 피드백
 
+- [x] 글꼴 미리보기를 포함해서 비트맵들이 전부 anti aliasing이 꺼져있는 것 같은데, 켤 수 있도록 설정 — `3f3c3be`, settings AA toggle + browser test
+- [x] 설정 팝업을 만들어서 언어랑 anti aliasing toggle을 넣기 — `3f3c3be`, settings dialog + language sync test
+
 - [x] id="group-glyph-section" 가 id="group-index-controls" 바로 위나 아래에 있어야 함. — `0659383`, DOM sibling test
 
 - [x] 내가 의미한 그룹 목록 그리드는 그룹 목록이 아니라 그룹 내부의 글꼴 목록이었음. — `7d7a1ce`, selected-group glyph grid + pager test
