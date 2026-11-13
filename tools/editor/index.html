@@ -106,14 +106,22 @@
           <label for="global-search" data-i18n="nav.jump">정확한 이동</label>
           <input id="global-search" type="search" data-i18n-placeholder="nav.jumpPlaceholder" placeholder="U+AC00 또는 그룹명[0]">
           <div id="global-error" class="error-text"></div>
-          <div class="field-heading">
-            <label for="group-search" data-i18n="nav.groupSearch">그룹 이름 검색</label>
-            <button id="toggle-group-grid" class="collapse-btn" type="button" data-i18n-title="nav.groupGridToggle" aria-label="그룹 그리드 접기/펼치기" aria-expanded="true">
-              <svg class="icon"><use href="#i-chevron-down"/></svg><span class="collapse-label">접기</span>
-            </button>
-          </div>
-          <input id="group-search" type="search" data-i18n-placeholder="nav.groupPlaceholder" placeholder="그룹 이름 일부">
-          <div id="group-list" class="group-list group-grid" data-i18n-title="nav.groupGridLabel" aria-label="그룹 미리보기"></div>
+        </section>
+        <hr>
+        <section class="panel-section">
+          <h2 data-i18n="text.title">문구 미리보기</h2>
+          <select id="text-preset">
+            <option value="" data-i18n="text.custom">직접 입력</option>
+            <option value="다람쥐 헌 쳇바퀴에 타고파." data-i18n="text.korean">한글 예문</option>
+            <option value="The quick brown fox jumps over the lazy dog." data-i18n="text.pangram">영문 팬그램</option>
+            <option value="0123456789 !? @#$% &* () [] {} +-*/ = < >" data-i18n="text.symbols">숫자/기호</option>
+          </select>
+          <textarea id="text-input" rows="2">다람쥐 헌 쳇바퀴에 타고파.</textarea>
+          <div class="row"><span id="text-status" class="muted"></span></div>
+          <button id="text-preview-open" class="text-preview-open" type="button" data-i18n-title="text.openHint" aria-label="클릭하여 크게 보기" disabled>
+            <canvas id="text-preview" aria-hidden="true"></canvas>
+          </button>
+          <p class="text-preview-hint" data-i18n="text.openHint">클릭하여 크게 보기</p>
         </section>
       </aside>
 
@@ -211,6 +219,14 @@
             <button id="index-next" class="icon-btn" data-i18n-title="group.nextIndex" aria-label="다음 인덱스"><svg class="icon"><use href="#i-chevron-right"/></svg></button>
           </div>
           <div id="texture-info"></div>
+          <div class="field-heading group-grid-heading">
+            <label for="group-search" data-i18n="nav.groupSearch">그룹 이름 검색</label>
+            <button id="toggle-group-grid" class="collapse-btn" type="button" data-i18n-title="nav.groupGridToggle" aria-label="그룹 그리드 접기/펼치기" aria-expanded="true">
+              <svg class="icon"><use href="#i-chevron-down"/></svg><span class="collapse-label">접기</span>
+            </button>
+          </div>
+          <input id="group-search" type="search" data-i18n-placeholder="nav.groupPlaceholder" placeholder="그룹 이름 일부">
+          <div id="group-list" class="group-list group-grid" data-i18n-title="nav.groupGridLabel" aria-label="그룹 미리보기"></div>
           <div class="subsection-heading">
             <h3 data-i18n="children.title">직계 자식</h3>
             <label class="check"><input id="child-filter" type="checkbox" checked> <span data-i18n="children.currentOnly">현재 글리프 배치만</span></label>
@@ -223,22 +239,6 @@
           <h3 data-i18n="usage.structural">부품 사용처</h3>
           <input class="usage-search" data-usage-search="structural-usage" type="search" data-i18n-placeholder="usage.searchStructural" placeholder="사용처 검색">
           <div id="structural-usage" class="list muted" data-i18n="group.none">선택 없음</div>
-        </section>
-        <hr>
-        <section class="panel-section">
-          <h2 data-i18n="text.title">문구 미리보기</h2>
-          <select id="text-preset">
-            <option value="" data-i18n="text.custom">직접 입력</option>
-            <option value="다람쥐 헌 쳇바퀴에 타고파." data-i18n="text.korean">한글 예문</option>
-            <option value="The quick brown fox jumps over the lazy dog." data-i18n="text.pangram">영문 팬그램</option>
-            <option value="0123456789 !? @#$% &* () [] {} +-*/ = < >" data-i18n="text.symbols">숫자/기호</option>
-          </select>
-          <textarea id="text-input" rows="2">다람쥐 헌 쳇바퀴에 타고파.</textarea>
-          <div class="row"><span id="text-status" class="muted"></span></div>
-          <button id="text-preview-open" class="text-preview-open" type="button" data-i18n-title="text.openHint" aria-label="클릭하여 크게 보기" disabled>
-            <canvas id="text-preview" aria-hidden="true"></canvas>
-          </button>
-          <p class="text-preview-hint" data-i18n="text.openHint">클릭하여 크게 보기</p>
         </section>
       </aside>
     </main>

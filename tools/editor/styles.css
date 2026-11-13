@@ -540,6 +540,7 @@ button.icon-btn.labeled { width: auto; padding: 0 8px; gap: 5px; }
 .collapse-btn[aria-expanded="false"] .icon { transform: rotate(-90deg); }
 .collapse-label { font-size: 10.5px; white-space: nowrap; }
 .group-list, .list { display: flex; flex-direction: column; gap: 3px; max-height: 250px; overflow: auto; }
+.group-grid-heading { margin-top: 8px; }
 .group-list.group-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));

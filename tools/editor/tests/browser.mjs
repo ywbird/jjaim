@@ -152,6 +152,9 @@ try {
   assert.notEqual(await page.$eval("#grid-toggle", (node) => getComputedStyle(node).backgroundImage), "none");
   assert.ok((await page.$$eval("#group-list .group-tile", (nodes) => nodes.length)) > 0);
   assert.ok((await page.$$eval("#group-list .group-tile canvas", (nodes) => nodes.length)) > 0);
+  assert.equal(await page.evaluate(() => document.querySelector("#inspector").contains(document.querySelector("#group-list"))), true);
+  assert.equal(await page.evaluate(() => document.querySelector("#navigator").contains(document.querySelector("#text-preview"))), true);
+  assert.equal(await page.evaluate(() => Boolean(document.querySelector("#group-list").compareDocumentPosition(document.querySelector("#child-info")) & Node.DOCUMENT_POSITION_FOLLOWING)), true);
   await page.click("#toggle-group-grid");
   assert.equal(await page.$eval("#group-list", (node) => node.hidden), true);
   assert.equal(await page.$eval("#toggle-group-grid", (node) => node.getAttribute("aria-expanded")), "false");
