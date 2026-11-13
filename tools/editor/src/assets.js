@@ -1,3 +1,4 @@
+import { cropBox } from "./declaration.js";
 import { decodePng } from "./png.js";
 import { normalizeLogicalPath } from "./zip.js";
 
@@ -24,20 +25,62 @@ export function sourcePath(declaration, setName, sourceName) {
   return resolveLogicalPath(raw);
 }
 
-export function sourceRows(declaration, assets) {
+export function minimumTextureSizes(declaration) {
+  const sizes = new Map();
+  for (const group of declaration.groups.values()) {
+    if (!group.texture) continue;
+    const resolved = sourcePath(declaration, group.texture.set, group.texture.source);
+    if (resolved.error) continue;
+    const first = cropBox(group, 0);
+    const last = cropBox(group, group.count - 1);
+    const entry = sizes.get(resolved.path) ?? { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+    entry.minX = Math.min(entry.minX, first.x, last.x);
+    entry.minY = Math.min(entry.minY, first.y, last.y);
+    entry.maxX = Math.max(entry.maxX, first.x + first.width, last.x + last.width);
+    entry.maxY = Math.max(entry.maxY, first.y + first.height, last.y + last.height);
+    sizes.set(resolved.path, entry);
+  }
+  const result = new Map();
+  for (const [path, entry] of sizes) {
+    const width = Math.max(0, entry.maxX);
+    const height = Math.max(0, entry.maxY);
+    let error = null;
+    if (entry.minX < 0 || entry.minY < 0) {
+      error = "선언의 추출 사각형이 음수 좌표를 사용합니다";
+    } else if (width > ASSET_LIMITS.side || height > ASSET_LIMITS.side || width * height > ASSET_LIMITS.pixels) {
+      error = `필요 최소 크기 ${width}×${height}가 PNG 자원 한도를 넘습니다`;
+    }
+    result.set(path, { width, height, minX: entry.minX, minY: entry.minY, error });
+  }
+  return result;
+}
+
+export function sizeError(required, width, height) {
+  if (!required) return null;
+  if (required.error) return required.error;
+  if (width >= required.width && height >= required.height) return null;
+  return `이미지 ${width}×${height}, 최소 ${required.width}×${required.height} 필요`;
+}
+
+export function sourceRows(declaration, assets, sizes = minimumTextureSizes(declaration)) {
   const rows = [];
   for (const [setName, sources] of declaration.textureSets) {
     for (const [sourceName, rawPath] of sources) {
       const resolved = resolveLogicalPath(rawPath);
       const asset = resolved.path ? assets.get(resolved.path) : null;
+      const required = resolved.path ? sizes.get(resolved.path) ?? null : null;
+      const declaredProblem = required?.error ?? null;
+      const assetProblem = asset ? sizeError(required, asset.width, asset.height) : null;
+      const problem = resolved.error ?? declaredProblem ?? assetProblem;
       rows.push({
         set: setName,
         source: sourceName,
         declaredPath: rawPath,
         path: resolved.path ?? null,
-        error: resolved.error ?? null,
+        required,
+        error: problem,
         asset,
-        status: resolved.error ? "지원 범위 밖 경로" : asset ? "연결됨" : "미연결",
+        status: resolved.error ? "지원 범위 밖 경로" : declaredProblem ? "선언 추출 범위 오류" : assetProblem ? "크기 부족" : asset ? "연결됨" : "미연결",
       });
     }
   }
@@ -67,10 +110,12 @@ export class AssetStore {
     return total;
   }
 
-  bind(path, decoded, { replace = false } = {}) {
+  bind(path, decoded, { replace = false, minimum = null } = {}) {
     const normalized = resolveLogicalPath(path);
     if (normalized.error) throw new Error(normalized.error);
     const key = normalized.path;
+    const problem = sizeError(minimum, decoded.width, decoded.height);
+    if (problem) throw new Error(problem);
     const existing = this.assets.get(key);
     if (existing) {
       if (!replace) return { asset: existing, changed: false };

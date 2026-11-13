@@ -1,6 +1,6 @@
 import { decodePng, isPng } from "./png.js";
 import { readZip } from "./zip.js";
-import { AssetStore, resolveLogicalPath, sourceRows } from "./assets.js";
+import { AssetStore, minimumTextureSizes, resolveLogicalPath, sizeError, sourceRows } from "./assets.js";
 
 export const IMPORT_LIMITS = {
   fileBytes: 80 * 1024 * 1024,
@@ -125,7 +125,12 @@ export async function importImages(declaration, assets, files) {
   if (!declaration) throw new ImportError("먼저 선언을 여세요. PNG/ZIP만으로 그룹을 만들 수 없습니다.");
   const { candidates, skipped } = await readImageFiles(files);
   const decoded = await decodeCandidates(candidates);
+  const sizes = minimumTextureSizes(declaration);
   const plan = planLinks(declaration, assets, decoded);
+  for (const [path, candidate] of plan.replacements) {
+    const problem = candidate.error ?? sizeError(sizes.get(path), candidate.image.width, candidate.image.height);
+    if (problem) candidate.error = problem;
+  }
   const linked = [];
   const errors = [];
   for (const [path, candidate] of plan.links) {
@@ -135,7 +140,7 @@ export async function importImages(declaration, assets, files) {
     }
     if (path === candidate.path) {
       try {
-        const result = assets.bind(path, candidate.image);
+        const result = assets.bind(path, candidate.image, { minimum: sizes.get(path) });
         if (result.changed) linked.push(path);
       } catch (error) {
         errors.push(`${path}: ${error.message}`);
@@ -148,31 +153,37 @@ export async function importImages(declaration, assets, files) {
     errors,
     skipped,
     unreferenced: plan.unreferenced.map((candidate) => candidate.name),
-    rows: sourceRows(declaration, assets),
+    rows: sourceRows(declaration, assets, sizes),
     decoded,
     plan,
   };
 }
 
 export async function replaceAssets(declaration, assets, pairs) {
+  const sizes = minimumTextureSizes(declaration);
   const prepared = [];
   for (const { path, bytes } of pairs) {
     const image = await decodePng(bytes);
     const asset = assets.get(path);
     if (!asset) throw new ImportError(`연결된 자산이 아닙니다: ${path}`);
+    const problem = sizeError(sizes.get(path), image.width, image.height);
+    if (problem) throw new ImportError(`${path}: ${problem}`);
     if (asset.width !== image.width || asset.height !== image.height) throw new ImportError(`이미지 크기가 다릅니다: ${path}`);
-    prepared.push({ path, image });
+    prepared.push({ path, image, minimum: sizes.get(path) });
   }
-  for (const { path, image } of prepared) assets.bind(path, image, { replace: true });
+  for (const { path, image, minimum } of prepared) assets.bind(path, image, { replace: true, minimum });
   return prepared.map((item) => item.path);
 }
 
 export async function manualLink(declaration, assets, path, bytes) {
   const image = await decodePng(bytes);
   const asset = assets.get(path);
+  const minimum = minimumTextureSizes(declaration).get(path);
   if (asset) {
+    const problem = sizeError(minimum, image.width, image.height);
+    if (problem) throw new ImportError(`${path}: ${problem}`);
     if (asset.width !== image.width || asset.height !== image.height) throw new ImportError("이미지 크기가 달라 교체할 수 없습니다");
-    assets.bind(path, image, { replace: true });
-  } else assets.bind(path, image);
+    assets.bind(path, image, { replace: true, minimum });
+  } else assets.bind(path, image, { minimum });
   return sourceRows(declaration, assets);
 }

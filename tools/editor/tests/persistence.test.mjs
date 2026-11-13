@@ -35,6 +35,28 @@ test("workspace serialization keeps declaration, original pixels, and full histo
   assert.throws(() => deserializeWorkspace({ schemaVersion: 99 }), /스키마/);
 });
 
+test("restoring a workspace rejects an asset below the declaration minimum", () => {
+  const text = JSON.stringify({
+    texture_sets: { main: { sheet: "sheet.png" } },
+    groups: { g: { size: [2, 1], count: 1, texture: { set: "main", source: "sheet", start: [0, 0], direction: "right" } } },
+  });
+  const assets = new AssetStore();
+  assets.bind("sheet.png", { width: 1, height: 1, data: Uint8Array.from([0, 0, 0, 0]) });
+  const history = new History(assets);
+  const raw = serializeWorkspace({
+    id: "w2",
+    name: "작업",
+    fileName: "x.json",
+    declaration: parseDeclaration(text),
+    assets,
+    history,
+    view: {},
+    font: null,
+    createdAt: 1,
+  });
+  assert.throws(() => deserializeWorkspace(raw), /최소|열 수 없습니다/);
+});
+
 test("storage failures are reported instead of silently succeeding", async () => {
   await assert.rejects(saveWorkspace({}), /IndexedDB/);
 });

@@ -126,6 +126,52 @@ test("random low-compression PNGs survive an own ZIP round-trip", async () => {
   }
 });
 
+function sizedDeclaration() {
+  return parseDeclaration(
+    JSON.stringify({
+      texture_sets: { main: { sheet: "sheet.png" } },
+      groups: {
+        g: { size: [2, 1], count: 1, texture: { set: "main", source: "sheet", start: [0, 0], direction: "right" } },
+      },
+    }),
+  );
+}
+
+test("initial connection rejects an image below the declaration minimum", async () => {
+  const model = sizedDeclaration();
+  const assets = new AssetStore();
+  const rejected = await importImages(model, assets, [file("sheet.png", await png([black]))]);
+  assert.deepEqual(rejected.linked, []);
+  assert.equal(assets.has("sheet.png"), false);
+  assert.match(rejected.errors.join(" "), /이미지 1×1, 최소 2×1 필요/);
+
+  const accepted = await importImages(model, assets, [file("sheet.png", await png([black, white]))]);
+  assert.deepEqual(accepted.linked, ["sheet.png"]);
+  assert.equal(assets.get("sheet.png").width, 2);
+});
+
+test("manual link and replacement reject undersized images without changing pixels", async () => {
+  const model = sizedDeclaration();
+  const assets = new AssetStore();
+  await assert.rejects(manualLink(model, assets, "sheet.png", await png([black])), /최소 2×1/);
+  assert.equal(assets.has("sheet.png"), false);
+
+  await manualLink(model, assets, "sheet.png", await png([black, white]));
+  const replacement = await png([white]);
+  await assert.rejects(replaceAssets(model, assets, [{ path: "sheet.png", bytes: replacement }]), /최소 2×1/);
+  assert.deepEqual([...assets.get("sheet.png").current], [...black, ...white]);
+});
+
+test("ZIP re-import marks an undersized replacement and leaves the asset unchanged", async () => {
+  const model = sizedDeclaration();
+  const assets = new AssetStore();
+  await manualLink(model, assets, "sheet.png", await png([black, white]));
+  const zip = await makeZip([{ name: "sheet.png", data: await png([white]) }]);
+  const result = await importImages(model, assets, [file("bundle.zip", zip)]);
+  assert.match(result.replacements.get("sheet.png").error, /최소 2×1/);
+  assert.deepEqual([...assets.get("sheet.png").current], [...black, ...white]);
+});
+
 test("export writes full textures, sorted ZIP paths, and PNG-only entries", async () => {
   const declarationModel = declaration();
   const assets = new AssetStore();

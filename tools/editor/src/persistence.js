@@ -1,4 +1,4 @@
-import { AssetStore } from "./assets.js";
+import { AssetStore, minimumTextureSizes } from "./assets.js";
 import { parseDeclaration } from "./declaration.js";
 import { History } from "./history.js";
 
@@ -89,8 +89,13 @@ export function deserializeWorkspace(raw) {
   }
   const declaration = parseDeclaration(raw.declarationText, { fileName: raw.fileName });
   const assets = new AssetStore();
+  const sizes = minimumTextureSizes(declaration);
   for (const item of raw.assets) {
-    assets.bind(item.path, { width: item.width, height: item.height, data: item.original });
+    try {
+      assets.bind(item.path, { width: item.width, height: item.height, data: item.original }, { minimum: sizes.get(item.path) });
+    } catch (error) {
+      throw new StorageError(`저장된 이미지를 열 수 없습니다: ${item.path} (${error.message})`);
+    }
     const asset = assets.get(item.path);
     asset.current = item.current.slice();
   }
