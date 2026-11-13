@@ -9,6 +9,10 @@
 
 ## 피드백
 
+- [x] UI에서 border radius 전부 0으로 하자 — `112f595`, all border-radius 0
+- [x] 선택 영역이 움직일때 드래그 도중에는 선택 박스가 움직이지 않음. 드롭을 해야 박스가 움직임. 드래그 도중에도 박스가 움직여야함. — `e9edfdb`, browser drag test
+- [x] 선택 영역이 전체 영역 밖으로 나갈 수 있어야 함. 밖에 나간건 trim되어야함. — `e9edfdb`, unit + browser trim test
+
 - [x] design-taste-frontend 사용 — `0b59993`, before/after captures + Chromium/Firefox tests
 
 - [x] 스펙 이름이 JJaim으로 정해졌으므로 제목을 JJaim Texture Editor / JJaim 텍스쳐 편집기 — `b04a82a`, title browser test
@@ -48,8 +52,3 @@
 - [x] 부품 사용처를 누르면 그 글리프로 이동하는 기능 — `6ff3ffd`, hangul browser test
 - [x] 다크모드(토글) — `6ff3ffd`, browser test
 - [x] i18n(한글, 영어) — `6ff3ffd`, browser test
-
-## 아직 처리하지 말것. 나중에 모아서 요청할 예정
-
-- [ ] ui 전반적 크기 증가. 지금은 좀 작아서 가독성이 별로임
-- [ ] AI 느낌 줄이기 위해 taste-skill 도입?
