@@ -110,6 +110,8 @@ try {
   await page.goto(base, { waitUntil: "networkidle0" });
   assert.equal(await page.title(), "JJaim 텍스쳐 편집기");
   assert.equal(await page.$eval('script[src="src/app.js"]', (node, prefix) => node.src.startsWith(prefix), base), true);
+  await page.waitForSelector("#empty-state", { visible: true });
+  assert.equal(await page.$eval("#editor", (node) => node.hidden), true);
 
   await page.setOfflineMode(true);
 
@@ -201,6 +203,12 @@ try {
   await page.waitForFunction(() => window.__editor.state.workspace.history.revisions.size === 3);
   await page.waitForFunction(() => document.querySelector("#save-status").classList.contains("saved"));
 
+  const editedHead = await page.evaluate(() => window.__editor.state.workspace.history.headId);
+  await page.click("#undo");
+  await page.waitForFunction((head) => window.__editor.state.workspace.history.headId !== head, {}, editedHead);
+  await page.click("#redo");
+  await page.waitForFunction((head) => window.__editor.state.workspace.history.headId === head, {}, editedHead);
+
   await page.click("#file-menu-button");
   await page.click("#export-changed");
   const zipPath = await waitDownload(downloadDir, "Browser-textures.zip");
@@ -258,6 +266,8 @@ try {
   await page.click("#structural-usage button");
   await page.waitForFunction(() => window.__editor.state.selected?.group === "hangul_syllables");
   assert.equal(await page.evaluate(() => window.__editor.state.context?.group), "hangul_syllables");
+  assert.equal(await page.$eval("#editing-badge", (node) => node.textContent), "합성 전용 · 읽기 전용");
+  assert.equal(await page.$eval('[data-tool="pencil"]', (node) => node.disabled), true);
   assert.notEqual(await page.$eval("#context", (canvas) => canvas.toDataURL()), beforeContext);
   assert.notEqual(await page.$eval("#board", (canvas) => canvas.toDataURL()), beforeBoard);
   assert.equal(await page.$$eval("#child-info .list-item", (nodes) => nodes.length), 2);
@@ -280,6 +290,8 @@ try {
   await page.click("#child-strip .child-chip .child-nav");
   await page.waitForFunction(() => window.__editor.state.selected?.group === "initial_0");
   assert.equal(await page.evaluate(() => window.__editor.state.context), null);
+  assert.equal(await page.$eval("#editing-badge", (node) => node.textContent), "원본 픽셀 편집");
+  assert.equal(await page.$eval('[data-tool="pencil"]', (node) => node.disabled), false);
   assert.notEqual(await page.$eval("#context", (canvas) => canvas.toDataURL()), beforeChildContext);
   const beforeCharContext = await page.$eval("#context", (canvas) => canvas.toDataURL());
   const beforeCharBoard = await page.$eval("#board", (canvas) => canvas.toDataURL());

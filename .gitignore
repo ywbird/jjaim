@@ -9,3 +9,6 @@ __pycache__/
 # Generated inspector previews
 tools/inspector/sheet.png
 tools/inspector/text.png
+
+# Local design-taste captures and browser profiles
+.taste-skill/

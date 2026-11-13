@@ -7,34 +7,74 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
+    <svg class="icon-sprite" aria-hidden="true" focusable="false">
+      <defs>
+        <symbol id="i-panel-left" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9.5 4.5v15"/></symbol>
+        <symbol id="i-panel-right" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M14.5 4.5v15"/></symbol>
+        <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.2 8.2 0 0 1 9.5 4a8.2 8.2 0 1 0 10.5 10.5Z"/></symbol>
+        <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4"/></symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></symbol>
+        <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+        <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"/></symbol>
+        <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></symbol>
+        <symbol id="i-skip-left" viewBox="0 0 24 24"><path d="m11 6-6 6 6 6M19 6l-6 6 6 6"/></symbol>
+        <symbol id="i-skip-right" viewBox="0 0 24 24"><path d="m4 6 6 6-6 6M13 6l6 6-6 6"/></symbol>
+        <symbol id="i-pencil" viewBox="0 0 24 24"><path d="m5 19 1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L9 18l-4 1ZM14.5 6.5l3 3"/></symbol>
+        <symbol id="i-eraser" viewBox="0 0 24 24"><path d="m4 15.5 7.5-7.5 6 6-4.5 6H7l-3-4.5ZM10 9l6 6"/></symbol>
+        <symbol id="i-marquee" viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="1" stroke-dasharray="3 3"/></symbol>
+        <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></symbol>
+        <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/></symbol>
+        <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M9.3 4v16M14.7 4v16M4 9.3h16M4 14.7h16"/></symbol>
+        <symbol id="i-select-all" viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/></symbol>
+        <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+        <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 7H4V2"/><path d="M4 7a8 8 0 1 1 1.5 9.5"/></symbol>
+        <symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 7h5V2"/><path d="M20 7a8 8 0 1 0-1.5 9.5"/></symbol>
+        <symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></symbol>
+        <symbol id="i-status-idle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/></symbol>
+        <symbol id="i-status-saving" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+        <symbol id="i-status-saved" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+        <symbol id="i-status-failed" viewBox="0 0 24 24"><path d="M12 3 3 20h18L12 3Z"/><path d="M12 9v5M12 17v.5"/></symbol>
+        <symbol id="i-status-temp" viewBox="0 0 24 24"><path d="m12 3 9 9-9 9-9-9 9-9Z"/></symbol>
+      </defs>
+    </svg>
     <header id="topbar">
-      <button id="toggle-nav" class="icon-btn" data-i18n-title="nav.toggle" aria-label="탐색 패널">◧</button>
-      <strong data-i18n="app.shortTitle">JJaim 텍스쳐 편집기</strong>
-      <span id="workspace-name"></span>
-      <span id="save-status" class="status-icon" role="status" aria-live="polite" title="변경 없음">●</span>
-      <span class="spacer"></span>
-      <button id="lang-toggle" class="icon-btn" title="English">EN</button>
-      <button id="theme-toggle" class="icon-btn" data-i18n-title="theme.toggle" aria-label="다크 모드">☾</button>
-      <button id="open-works" class="icon-btn" data-i18n-title="works.open" aria-label="저장된 작업">▤</button>
-      <div class="menu-wrap">
-        <button id="file-menu-button" class="icon-btn" data-i18n-title="menu.title" aria-label="불러오기/내보내기">☰</button>
-        <div id="file-menu" class="menu" hidden>
-          <button id="open-declaration" class="menu-item" data-i18n="menu.openDeclaration">선언 열기</button>
-          <button id="open-project" class="menu-item" data-i18n="menu.openProject">프로젝트 열기 (.jjaim)</button>
-          <button id="open-sources" class="menu-item" data-i18n="menu.sources" disabled>소스 연결</button>
-          <hr>
-          <button id="export-single" class="menu-item" data-i18n="menu.exportSingle" disabled>선택 PNG</button>
-          <button id="export-changed" class="menu-item" data-i18n="menu.exportChanged" disabled>변경 ZIP</button>
-          <button id="export-all" class="menu-item" data-i18n="menu.exportAll" disabled>전체 ZIP</button>
-          <button id="export-project" class="menu-item" data-i18n="menu.exportProject" disabled>프로젝트 내보내기 (.jjaim)</button>
+      <button id="toggle-nav" class="icon-btn" data-i18n-title="nav.toggle" aria-label="탐색 패널"><svg class="icon"><use href="#i-panel-left"/></svg></button>
+      <div class="brand">
+        <strong data-i18n="app.shortTitle">JJaim 텍스쳐 편집기</strong>
+        <div class="brand-meta">
+          <span id="workspace-name"></span>
+          <span id="save-status" class="status-icon" role="status" aria-live="polite" title="변경 없음"><svg class="icon"><use href="#i-status-idle"/></svg></span>
         </div>
       </div>
-      <button id="toggle-inspector" class="icon-btn" data-i18n-title="inspector.toggle" aria-label="정보 패널">◨</button>
+      <span class="spacer"></span>
+      <div class="topbar-actions">
+        <button id="lang-toggle" class="text-btn" title="English">EN</button>
+        <span class="topbar-divider" aria-hidden="true"></span>
+        <button id="theme-toggle" class="icon-btn" data-i18n-title="theme.toggle" aria-label="다크 모드"><svg class="icon"><use href="#i-moon"/></svg></button>
+        <button id="open-works" class="icon-btn" data-i18n-title="works.open" aria-label="저장된 작업"><svg class="icon"><use href="#i-clock"/></svg></button>
+        <div class="menu-wrap">
+          <button id="file-menu-button" class="icon-btn" data-i18n-title="menu.title" aria-label="불러오기/내보내기"><svg class="icon"><use href="#i-menu"/></svg></button>
+          <div id="file-menu" class="menu" hidden>
+            <div class="menu-label" data-i18n="menu.groupOpen">열기</div>
+            <button id="open-declaration" class="menu-item" data-i18n="menu.openDeclaration">선언 열기</button>
+            <button id="open-project" class="menu-item" data-i18n="menu.openProject">프로젝트 열기 (.jjaim)</button>
+            <button id="open-sources" class="menu-item" data-i18n="menu.sources" disabled>소스 연결</button>
+            <hr>
+            <div class="menu-label" data-i18n="menu.groupExport">내보내기</div>
+            <button id="export-single" class="menu-item" data-i18n="menu.exportSingle" disabled>선택 PNG</button>
+            <button id="export-changed" class="menu-item" data-i18n="menu.exportChanged" disabled>변경 ZIP</button>
+            <button id="export-all" class="menu-item" data-i18n="menu.exportAll" disabled>전체 ZIP</button>
+            <button id="export-project" class="menu-item" data-i18n="menu.exportProject" disabled>프로젝트 내보내기 (.jjaim)</button>
+          </div>
+        </div>
+        <span class="topbar-divider" aria-hidden="true"></span>
+        <button id="toggle-inspector" class="icon-btn" data-i18n-title="inspector.toggle" aria-label="정보 패널"><svg class="icon"><use href="#i-panel-right"/></svg></button>
+      </div>
     </header>
 
     <main id="layout">
       <aside id="navigator" class="panel">
-        <section>
+        <section class="panel-section">
           <label for="set-select" data-i18n="nav.characterSet">문자 셋</label>
           <select id="set-select"></select>
           <label class="check"><input id="mapped-only" type="checkbox" checked> <span data-i18n="nav.mappedOnly">매핑된 문자만</span></label>
@@ -42,13 +82,13 @@
           <input id="character-search" type="search" data-i18n-placeholder="nav.searchPlaceholder" placeholder="문자 검색 (여러 문자 가능)">
           <div id="character-grid" class="character-grid"></div>
           <div id="page-controls" class="row wrap">
-            <button id="page-first" class="icon-btn" data-i18n-title="nav.first" aria-label="처음">«</button>
-            <button id="page-prev" class="icon-btn" data-i18n-title="nav.prev" aria-label="이전">‹</button>
+            <button id="page-first" class="icon-btn" data-i18n-title="nav.first" aria-label="처음"><svg class="icon"><use href="#i-skip-left"/></svg></button>
+            <button id="page-prev" class="icon-btn" data-i18n-title="nav.prev" aria-label="이전"><svg class="icon"><use href="#i-chevron-left"/></svg></button>
             <input id="page-input" type="number" min="1" value="1" aria-label="페이지">
-            <span id="page-count">/ 1</span>
-            <button id="page-next" class="icon-btn" data-i18n-title="nav.next" aria-label="다음">›</button>
-            <button id="page-last" class="icon-btn" data-i18n-title="nav.last" aria-label="끝">»</button>
-            <select id="page-size">
+            <span id="page-count" class="page-count">/ 1</span>
+            <button id="page-next" class="icon-btn" data-i18n-title="nav.next" aria-label="다음"><svg class="icon"><use href="#i-chevron-right"/></svg></button>
+            <button id="page-last" class="icon-btn" data-i18n-title="nav.last" aria-label="끝"><svg class="icon"><use href="#i-skip-right"/></svg></button>
+            <select id="page-size" aria-label="페이지 크기">
               <option value="64">64</option>
               <option value="128" selected>128</option>
               <option value="256">256</option>
@@ -56,7 +96,7 @@
           </div>
         </section>
         <hr>
-        <section>
+        <section class="panel-section">
           <label for="global-search" data-i18n="nav.jump">정확한 이동</label>
           <input id="global-search" type="search" data-i18n-placeholder="nav.jumpPlaceholder" placeholder="U+AC00 또는 그룹명[0]">
           <div id="global-error" class="error-text"></div>
@@ -68,83 +108,113 @@
 
       <section id="workspace">
         <div id="empty-state">
+          <div class="empty-rule" aria-hidden="true"></div>
           <h1 data-i18n="empty.title">JJaim 텍스쳐 편집기</h1>
           <p data-i18n="empty.body">선언 JSON을 열고 PNG 텍스처를 연결하세요. 예제는 자동으로 불러오지 않습니다.</p>
-          <button id="empty-open-declaration" data-i18n="menu.openDeclaration">선언 열기</button>
-          <button id="empty-open-works" data-i18n="works.open">저장된 작업</button>
+          <div class="empty-actions">
+            <button id="empty-open-declaration" class="primary" data-i18n="menu.openDeclaration">선언 열기</button>
+            <button id="empty-open-works" data-i18n="works.open">저장된 작업</button>
+          </div>
+          <p class="empty-hint" data-i18n="empty.hint">선언 원문은 수정하지 않고, 픽셀은 PNG 자산에만 기록합니다.</p>
         </div>
         <div id="editor" hidden>
-          <div id="toolbar" class="row wrap">
-            <button data-tool="pencil" class="tool active" data-i18n-title="tool.pencil" aria-label="연필">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1 11-11-3-3L5 16l-1 4zM13 5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-            </button>
-            <button data-tool="eraser" class="tool" data-i18n-title="tool.eraser" aria-label="지우개">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16l8-8 6 6-5 5H6l-2-3zM10 10l6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-            </button>
-            <button data-tool="select" class="tool" data-i18n-title="tool.select" aria-label="선택">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"/></svg>
-            </button>
-            <button data-tool="move" class="tool" data-i18n-title="tool.move" aria-label="이동">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-            <select id="zoom" aria-label="확대">
-              <option>1</option><option>2</option><option>4</option><option>8</option>
-              <option>12</option><option selected>16</option><option>24</option><option>32</option>
-            </select>
-            <label class="check icon-check" data-i18n-title="tool.grid"><input id="grid-toggle" type="checkbox" checked><span class="grid-icon">▦</span></label>
-            <button id="select-all" class="icon-btn" data-i18n-title="tool.selectAll" aria-label="전체 선택">▣</button>
-            <button id="clear-selection" class="icon-btn" data-i18n-title="tool.clearSelection" aria-label="선택 해제">✕</button>
-            <button id="delete-selection" class="icon-btn" data-i18n-title="tool.deleteSelection" aria-label="선택 지우기">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            </button>
+          <div id="toolbar">
+            <div class="tool-group" role="group" data-i18n-title="toolbar.draw" aria-label="그리기 도구">
+              <button data-tool="pencil" class="tool active" data-i18n-title="tool.pencil" aria-label="연필">
+                <svg class="icon"><use href="#i-pencil"/></svg>
+              </button>
+              <button data-tool="eraser" class="tool" data-i18n-title="tool.eraser" aria-label="지우개">
+                <svg class="icon"><use href="#i-eraser"/></svg>
+              </button>
+              <button data-tool="select" class="tool" data-i18n-title="tool.select" aria-label="선택">
+                <svg class="icon"><use href="#i-marquee"/></svg>
+              </button>
+              <button data-tool="move" class="tool" data-i18n-title="tool.move" aria-label="이동">
+                <svg class="icon"><use href="#i-move"/></svg>
+              </button>
+            </div>
+            <span class="tool-divider" aria-hidden="true"></span>
+            <div class="tool-group" role="group" data-i18n-title="toolbar.view" aria-label="보기">
+              <label class="zoom-control" data-i18n-title="tool.zoom">
+                <select id="zoom" aria-label="확대">
+                  <option>1</option><option>2</option><option>4</option><option>8</option>
+                  <option>12</option><option selected>16</option><option>24</option><option>32</option>
+                </select><span aria-hidden="true">×</span>
+              </label>
+              <label class="check icon-check" data-i18n-title="tool.grid"><input id="grid-toggle" type="checkbox" checked><svg class="icon"><use href="#i-grid"/></svg></label>
+            </div>
+            <span class="tool-divider" aria-hidden="true"></span>
+            <div class="tool-group" role="group" data-i18n-title="toolbar.selection" aria-label="선택">
+              <button id="select-all" class="icon-btn labeled" data-i18n-title="tool.selectAll" aria-label="전체 선택">
+                <svg class="icon"><use href="#i-select-all"/></svg><span class="btn-label" data-i18n="tool.selectAllShort">전체</span>
+              </button>
+              <button id="clear-selection" class="icon-btn labeled" data-i18n-title="tool.clearSelection" aria-label="선택 해제">
+                <svg class="icon"><use href="#i-close"/></svg><span class="btn-label" data-i18n="tool.clearSelectionShort">해제</span>
+              </button>
+              <button id="delete-selection" class="icon-btn labeled" data-i18n-title="tool.deleteSelection" aria-label="선택 지우기">
+                <svg class="icon"><use href="#i-trash"/></svg><span class="btn-label" data-i18n="tool.deleteSelectionShort">지우기</span>
+              </button>
+            </div>
             <span class="spacer"></span>
-            <button id="undo" class="icon-btn" data-i18n-title="tool.undo" aria-label="되돌리기">↶</button>
-            <button id="redo" class="icon-btn" data-i18n-title="tool.redo" aria-label="다시 실행">↷</button>
+            <div class="tool-group" role="group" data-i18n-title="toolbar.history" aria-label="이력">
+              <button id="undo" class="icon-btn" data-i18n-title="tool.undo" aria-label="되돌리기"><svg class="icon"><use href="#i-undo"/></svg></button>
+              <button id="redo" class="icon-btn" data-i18n-title="tool.redo" aria-label="다시 실행"><svg class="icon"><use href="#i-redo"/></svg></button>
+            </div>
             <span id="tool-status" class="status">그룹을 선택하세요</span>
           </div>
           <div id="board-wrap">
             <canvas id="board" tabindex="0" aria-label="픽셀 편집 보드"></canvas>
           </div>
-          <div id="context-bar" class="row wrap">
-            <span id="context-label" class="muted">결과 문맥 없음</span>
+          <div id="context-bar">
+            <div class="context-heading">
+              <span class="eyebrow" data-i18n="context.heading">결과 문맥</span>
+              <span id="context-label" class="muted">결과 문맥 없음</span>
+            </div>
+            <span id="editing-badge" class="badge" data-state="none">그룹을 선택하세요</span>
+            <span class="spacer"></span>
             <label class="check"><input id="own-hidden" type="checkbox"> <span data-i18n="view.ownHidden">자기 레이어 숨기기</span></label>
             <label class="check"><input id="children-hidden" type="checkbox"> <span data-i18n="view.childrenHidden">자식 레이어 숨기기</span></label>
             <span id="selection-status" class="muted">선택 없음</span>
           </div>
           <div id="context-row">
-            <canvas id="context" aria-label="결과 문맥 미리보기"></canvas>
-            <div id="child-strip" class="child-strip" aria-label="직계 자식 글리프"></div>
+            <div class="context-preview">
+              <span class="preview-label" data-i18n="context.resultPreview">합성 결과</span>
+              <canvas id="context" aria-label="결과 문맥 미리보기"></canvas>
+            </div>
+            <div class="child-preview">
+              <span class="preview-label" data-i18n="children.title">직계 자식</span>
+              <div id="child-strip" class="child-strip" aria-label="직계 자식 글리프"></div>
+            </div>
           </div>
         </div>
       </section>
 
       <aside id="inspector" class="panel">
-        <section id="group-info">
+        <section id="group-info" class="panel-section">
           <h2 data-i18n="group.title">그룹</h2>
           <div id="group-detail" class="muted" data-i18n="group.none">선택 없음</div>
           <div id="group-index-controls" class="row wrap" hidden>
-            <button id="index-prev" class="icon-btn" data-i18n-title="group.prevIndex" aria-label="이전 인덱스">◀</button>
+            <button id="index-prev" class="icon-btn" data-i18n-title="group.prevIndex" aria-label="이전 인덱스"><svg class="icon"><use href="#i-chevron-left"/></svg></button>
             <input id="index-input" type="number" min="0" value="0">
-            <span id="index-count"></span>
-            <button id="index-next" class="icon-btn" data-i18n-title="group.nextIndex" aria-label="다음 인덱스">▶</button>
+            <span id="index-count" class="mono"></span>
+            <button id="index-next" class="icon-btn" data-i18n-title="group.nextIndex" aria-label="다음 인덱스"><svg class="icon"><use href="#i-chevron-right"/></svg></button>
           </div>
           <div id="texture-info"></div>
-          <div class="row wrap">
+          <div class="subsection-heading">
             <h3 data-i18n="children.title">직계 자식</h3>
-            <span class="spacer"></span>
             <label class="check"><input id="child-filter" type="checkbox" checked> <span data-i18n="children.currentOnly">현재 글리프 배치만</span></label>
           </div>
           <div id="child-info" class="list"></div>
         </section>
         <hr>
-        <section>
-          <h2 data-i18n="usage.title">사용처와 영향</h2>
+        <section class="panel-section">
+          <h2 data-i18n="usage.title">사용처</h2>
           <h3 data-i18n="usage.structural">부품 사용처</h3>
           <input class="usage-search" data-usage-search="structural-usage" type="search" data-i18n-placeholder="usage.searchStructural" placeholder="사용처 검색">
           <div id="structural-usage" class="list muted" data-i18n="group.none">선택 없음</div>
         </section>
         <hr>
-        <section>
+        <section class="panel-section">
           <h2 data-i18n="text.title">문구 미리보기</h2>
           <select id="text-preset">
             <option value="" data-i18n="text.custom">직접 입력</option>
@@ -154,7 +224,7 @@
           </select>
           <textarea id="text-input" rows="2">다람쥐 헌 쳇바퀴에 타고파.</textarea>
           <div class="row">
-            <select id="text-zoom"><option>1</option><option>2</option><option>4</option></select>
+            <select id="text-zoom" aria-label="문구 확대"><option>1</option><option>2</option><option>4</option></select>
             <span id="text-status" class="muted"></span>
           </div>
           <canvas id="text-preview" aria-label="문구 미리보기"></canvas>
@@ -164,10 +234,10 @@
 
     <dialog id="records-dialog">
       <div class="dialog-body">
-        <div class="row">
+        <div class="dialog-header">
           <h2 data-i18n="records.title">작업 기록</h2>
           <span class="spacer"></span>
-          <button id="works-close" class="icon-btn" data-i18n-title="common.close" aria-label="닫기">✕</button>
+          <button id="works-close" class="icon-btn" data-i18n-title="common.close" aria-label="닫기"><svg class="icon"><use href="#i-close"/></svg></button>
         </div>
         <div id="records-tabs" class="tabs" role="tablist">
           <button class="tab" data-records-tab="works" data-i18n="works.open">저장된 작업</button>
@@ -216,7 +286,11 @@
 
     <dialog id="source-dialog">
       <form method="dialog" class="dialog-body">
-        <h2 data-i18n="sources.title">소스 연결</h2>
+        <div class="dialog-header">
+          <h2 data-i18n="sources.title">소스 연결</h2>
+          <span class="spacer"></span>
+          <button value="close" class="icon-btn" data-i18n-title="common.close" aria-label="닫기"><svg class="icon"><use href="#i-close"/></svg></button>
+        </div>
         <p class="muted" data-i18n="sources.note">연결은 브라우저 작업의 자산 바인딩이며 선언을 수정하지 않습니다.</p>
         <div class="row wrap">
           <button type="button" id="import-images" data-i18n="sources.import">PNG/ZIP 가져오기</button>

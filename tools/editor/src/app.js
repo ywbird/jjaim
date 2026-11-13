@@ -136,6 +136,7 @@ const els = {
   undo: $("#undo"),
   redo: $("#redo"),
   toolStatus: $("#tool-status"),
+  editingBadge: $("#editing-badge"),
   board: $("#board"),
   boardWrap: $("#board-wrap"),
   ownHidden: $("#own-hidden"),
@@ -212,10 +213,25 @@ function el(tag, props = {}, ...children) {
   return node;
 }
 
-const STATUS_ICONS = { saving: "…", saved: "✓", failed: "!", temp: "△", "" : "●" };
+function icon(name) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "icon");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", `#i-${name}`);
+  svg.append(use);
+  return svg;
+}
+
+const STATUS_ICONS = { saving: "status-saving", saved: "status-saved", failed: "status-failed", temp: "status-temp", "": "status-idle" };
+
+function formatDate(timestamp) {
+  return new Date(timestamp).toLocaleString(getLanguage() === "ko" ? "ko-KR" : "en-US");
+}
 
 function setStatus(text, kind = "") {
-  els.saveStatus.textContent = STATUS_ICONS[kind] ?? "●";
+  els.saveStatus.replaceChildren(icon(STATUS_ICONS[kind] ?? "status-idle"));
   els.saveStatus.className = `status-icon ${kind}`;
   els.saveStatus.title = text;
   els.saveStatus.setAttribute("aria-label", text);
@@ -227,7 +243,7 @@ function applyLanguage() {
   els.langToggle.title = getLanguage() === "ko" ? "Switch to English" : "한국어로 전환";
   if (!state.workspace) {
     renderSetSelect();
-    els.characterGrid.replaceChildren(el("div", { class: "muted", text: t("nav.openPrompt") }));
+    els.characterGrid.replaceChildren(el("div", { class: "muted", text: t("nav.emptySet") }));
     return;
   }
   refreshAll();
@@ -241,7 +257,7 @@ function applyLanguage() {
 
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
-  els.themeToggle.textContent = theme === "dark" ? "☀" : "☾";
+  els.themeToggle.replaceChildren(icon(theme === "dark" ? "sun" : "moon"));
   try {
     localStorage.setItem("declarative-font-editor-theme", theme);
   } catch {
@@ -809,6 +825,12 @@ function diffTintImage(after, before) {
   return image;
 }
 
+function setEditingMode(mode) {
+  els.editor.dataset.mode = mode;
+  els.editingBadge.dataset.state = mode;
+  els.editingBadge.textContent = t(`edit.${mode}`);
+}
+
 function drawBoard() {
   const group = currentGroup();
   if (!group || !state.selected) {
@@ -818,6 +840,8 @@ function drawBoard() {
     els.board.style.width = "1px";
     els.board.style.height = "1px";
     ctx.clearRect(0, 0, 1, 1);
+    setEditingMode("none");
+    els.contextLabel.textContent = t("context.none");
     return;
   }
   const index = state.selected.index;
@@ -881,6 +905,9 @@ function drawBoard() {
   els.toolStatus.textContent = previewing
     ? t("history.preview", { id: previewing })
     : reason ?? t("status.editing", { group: group.name, index, tool: t(`tool.${state.view.tool}`) });
+  const mode = previewing ? "preview" : !group.texture ? "composite" : reason ? "error" : !canEdit() ? "readonly" : "source";
+  setEditingMode(mode);
+  els.toolStatus.title = els.toolStatus.textContent;
   els.board.classList.toggle("readonly", Boolean(reason) || Boolean(previewing) || !canEdit());
 }
 
@@ -889,6 +916,7 @@ function drawContext() {
   if (!target) {
     els.context.width = 1;
     els.context.height = 1;
+    els.contextLabel.textContent = t("context.none");
     return;
   }
   const renderer = state.draft ? state.draft.previewRenderer : activeRenderer();
@@ -906,7 +934,7 @@ function drawContext() {
     state.contextOnion = rendererForState(getBaseState(state.view.onionBase)).renderGlyph(target.group, target.index).image;
     if (!state.view.diff) els.contextLabel.textContent = t("context.result", { cp: codepointLabel(currentCodepoint() ?? 0) });
   }
-  const zoom = Math.max(1, Math.round(Math.min(8, 220 / Math.max(1, display.width, display.height))));
+  const zoom = Math.max(1, Math.round(Math.min(10, 220 / Math.max(1, display.width, display.height))));
   const ctx = drawImageToCanvas(els.context, display, zoom, true, !state.view.diff);
   if (state.view.onion && state.contextOnion) {
     const dpr = globalThis.devicePixelRatio || 1;
@@ -928,7 +956,7 @@ function drawContext() {
   if (!state.view.diff) {
     const cp = currentCodepoint();
     els.contextLabel.textContent = cp == null
-      ? t("context.none")
+      ? t("context.component", { group: target.group, index: target.index })
       : t("context.glyph", { cp: codepointLabel(cp), group: target.group, index: target.index });
   }
   if (result.errors.length) els.contextLabel.textContent = t("status.contextError", { message: result.errors[0].message });
@@ -967,6 +995,10 @@ function renderChildStrip(group, index) {
   const contextWidth = els.context.clientWidth || 0;
   const contextHeight = els.context.clientHeight || 0;
   const box = Math.max(96, Math.min(220, Math.max(contextWidth, contextHeight)));
+  if (tree.root.children.length === 0) {
+    els.childStrip.append(el("div", { class: "child-empty muted", text: t("layers.none") }));
+    return;
+  }
   for (const placement of tree.root.children) {
     const hidden = state.view.hidden.has ? state.view.hidden.has(placement.id) : state.view.hidden.includes(placement.id);
     const tile = el("div", {
@@ -994,14 +1026,13 @@ function renderChildStrip(group, index) {
       el("button", {
         class: "child-nav",
         type: "button",
-        text: "↗",
         title: t("children.go"),
         "aria-label": t("children.go"),
         onclick: (event) => {
           event.stopPropagation();
           selectGlyph(placement.group, placement.index);
         },
-      }),
+      }, icon("arrow-up-right")),
       glyphThumb(renderer.renderGlyph(placement.group, placement.index).image, box),
       `${placement.group}[${placement.index}]`,
     );
@@ -1028,19 +1059,22 @@ function renderGroupInfo() {
   els.groupDetail.append(
     el("strong", { text: group.name }),
     el("div", { text: group.description ? group.description : t("group.noDescription"), class: group.description ? "" : "muted" }),
-    el("div", { class: "muted", text: t("group.index", { index, count: group.count }) }),
+    el("div", { class: "muted mono", text: t("group.index", { index, count: group.count }) }),
   );
   const info = ownInfo(group, index);
   if (group.texture) {
     const resolved = sourcePath(state.workspace.declaration, group.texture.set, group.texture.source);
     els.textureInfo.append(
       el("div", { text: t("group.texture", { set: group.texture.set, source: group.texture.source }) }),
-      el("div", { class: "muted", text: resolved.path ?? resolved.error }),
-      el("div", { class: info.ok ? "" : "error-text", text: info.ok ? t("group.connected", { width: info.asset.width, height: info.asset.height, x: info.box.x, y: info.box.y }) : info.reason }),
+      el("div", { class: "muted mono", text: resolved.path ?? resolved.error }),
+      el("div", {
+        class: `texture-state ${info.ok ? "ok" : "error"}`,
+        text: info.ok ? t("group.connected", { width: info.asset.width, height: info.asset.height, x: info.box.x, y: info.box.y }) : info.reason,
+      }),
       el("button", { class: "small", text: t("group.sourceConnect"), onclick: openSources }),
     );
   } else {
-    els.textureInfo.append(el("div", { class: "muted", text: t("group.noTexture") }));
+    els.textureInfo.append(el("div", { class: "texture-state composite", text: t("group.noTexture") }));
   }
 
   const children = new Map();
@@ -1163,7 +1197,7 @@ function renderHistory() {
     },
       el("strong", { text: revision.id }),
       el("span", { text: ` · ${label}` }),
-      el("div", { class: "muted", text: new Date(revision.timestamp).toLocaleString() }),
+      el("div", { class: "muted", text: formatDate(revision.timestamp) }),
       current ? el("div", { class: "muted", text: t("history.current") }) : ancestor ? el("div", { class: "muted", text: t("history.onPath") }) : el("div", { class: "branch", text: t("history.otherBranch") }),
     );
     if (revision.start) {
@@ -1567,16 +1601,19 @@ function renderSourceTable() {
           onclick: () => createBlankTexture(row.path, row.required),
         })
       : null;
+    const status = row.error
+      ? el("span", { class: "state error", text: row.error })
+      : el("span", { class: `state ${row.asset ? "ok" : "pending"}`, text: t(row.asset ? "sources.linked" : "sources.unlinked") });
     const tr = el("tr");
     tr.append(
-      el("td", { text: row.set }),
-      el("td", { text: row.source }),
-      el("td", { text: row.declaredPath }),
-      el("td", { text: row.required ? `${row.required.width}×${row.required.height}` : "—" }),
+      el("td", { class: "mono", text: row.set }),
+      el("td", { class: "mono", text: row.source }),
+      el("td", { class: "mono", text: row.declaredPath }),
+      el("td", { class: "mono", text: row.required ? `${row.required.width}×${row.required.height}` : "—" }),
       el("td", {}, pick, blank ? " " : null, blank),
-      el("td", { text: row.asset?.path ?? "—" }),
-      el("td", { text: row.asset ? `${row.asset.width}×${row.asset.height}` : "—" }),
-      el("td", { class: row.error ? "error" : "", text: row.error ?? t(row.asset ? "sources.linked" : "sources.unlinked") }),
+      el("td", { class: "mono", text: row.asset?.path ?? "—" }),
+      el("td", { class: "mono", text: row.asset ? `${row.asset.width}×${row.asset.height}` : "—" }),
+      el("td", {}, status),
     );
     body.append(tr);
   }
@@ -1598,6 +1635,7 @@ function createBlankTexture(path, required) {
     state.baseCache.clear();
     renderSourceTable();
     renderNavigator();
+    renderGroupInfo();
     drawBoard();
     drawContext();
     els.importReport.textContent = t("sources.blankCreated", { path, width: image.width, height: image.height });
@@ -1641,6 +1679,7 @@ async function handleImages(files) {
     }
     renderSourceTable();
     renderNavigator();
+    renderGroupInfo();
     drawBoard();
     drawContext();
     els.importReport.textContent = [
@@ -1681,6 +1720,7 @@ async function handleManualFile(file) {
     state.baseCache.clear();
     renderSourceTable();
     renderNavigator();
+    renderGroupInfo();
     drawBoard();
     drawContext();
   } catch (error) {
@@ -1703,7 +1743,7 @@ async function loadWorksList() {
       const item = el("div", { class: "list-item" },
         el("strong", { text: row.name }),
         el("div", { class: "muted", text: t("works.info", { file: row.fileName, images: row.images, revisions: row.revisions }) }),
-        el("div", { class: "muted", text: new Date(row.updatedAt).toLocaleString() }),
+        el("div", { class: "muted", text: formatDate(row.updatedAt) }),
       );
       const rowButtons = el("div", { class: "row wrap" });
       rowButtons.append(
@@ -2221,7 +2261,7 @@ refreshAllInitial();
 
 function refreshAllInitial() {
   renderSetSelect();
-  els.characterGrid.replaceChildren(el("div", { class: "muted", text: t("nav.openPrompt") }));
+  els.characterGrid.replaceChildren(el("div", { class: "muted", text: t("nav.emptySet") }));
   els.undo.disabled = true;
   els.redo.disabled = true;
   bindEvents();
