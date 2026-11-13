@@ -26,6 +26,7 @@ import {
 } from "./unicode-sets.js";
 import { renderText, scaleImage } from "./text.js";
 import { loadFont, clampShadowSettings } from "./font.js";
+import { applyStatic, getLanguage, initLanguage, setLanguage, t } from "./i18n.js";
 import {
   PersistenceUnavailable,
   WorkspaceLock,
@@ -38,6 +39,16 @@ import {
 
 const $ = (selector) => document.querySelector(selector);
 const DEFAULT_TEXT = "다람쥐 헌 쳇바퀴에 타고파.";
+const SET_KEYS = {
+  current: "sets.current",
+  ascii: "sets.ascii",
+  latin1: "sets.latin1",
+  "hangul-compat": "sets.hangulCompat",
+  "hangul-syllables": "sets.hangulSyllables",
+  ksx1001: "sets.ksx1001",
+  arrows: "sets.arrows",
+  currency: "sets.currency",
+};
 
 const state = {
   workspace: null,
@@ -52,6 +63,9 @@ const state = {
     hidden: [],
     ownHidden: false,
     childrenHidden: false,
+    childFilter: true,
+    navHidden: false,
+    inspectorHidden: false,
     diff: false,
     onion: false,
     diffBase: "r0",
@@ -81,6 +95,13 @@ const state = {
 
 const els = {
   topbar: $("#topbar"),
+  layout: $("#layout"),
+  toggleNav: $("#toggle-nav"),
+  toggleInspector: $("#toggle-inspector"),
+  langToggle: $("#lang-toggle"),
+  themeToggle: $("#theme-toggle"),
+  fileMenuButton: $("#file-menu-button"),
+  fileMenu: $("#file-menu"),
   openDeclaration: $("#open-declaration"),
   emptyOpenDeclaration: $("#empty-open-declaration"),
   openWorks: $("#open-works"),
@@ -133,6 +154,7 @@ const els = {
   indexCount: $("#index-count"),
   indexNext: $("#index-next"),
   textureInfo: $("#texture-info"),
+  childFilter: $("#child-filter"),
   childInfo: $("#child-info"),
   structuralUsage: $("#structural-usage"),
   possibleImpact: $("#possible-impact"),
@@ -167,7 +189,8 @@ const els = {
   sourceTable: $("#source-table"),
   importImages: $("#import-images"),
   importReport: $("#import-report"),
-  worksDialog: $("#works-dialog"),
+  recordsDialog: $("#records-dialog"),
+  recordsTabs: $("#records-tabs"),
   worksList: $("#works-list"),
   worksClose: $("#works-close"),
   confirmDialog: $("#confirm-dialog"),
@@ -194,9 +217,67 @@ function el(tag, props = {}, ...children) {
   return node;
 }
 
+const STATUS_ICONS = { saving: "…", saved: "✓", failed: "!", temp: "△", "" : "●" };
+
 function setStatus(text, kind = "") {
-  els.saveStatus.textContent = text;
-  els.saveStatus.className = `status ${kind}`;
+  els.saveStatus.textContent = STATUS_ICONS[kind] ?? "●";
+  els.saveStatus.className = `status-icon ${kind}`;
+  els.saveStatus.title = text;
+  els.saveStatus.setAttribute("aria-label", text);
+}
+
+function applyLanguage() {
+  applyStatic();
+  els.langToggle.textContent = getLanguage() === "ko" ? "EN" : "한";
+  els.langToggle.title = getLanguage() === "ko" ? "Switch to English" : "한국어로 전환";
+  if (!state.workspace) {
+    renderSetSelect();
+    els.characterGrid.replaceChildren(el("div", { class: "muted", text: t("nav.openPrompt") }));
+    return;
+  }
+  refreshAll();
+  renderHistory();
+  if (els.sourceDialog.open) renderSourceTable();
+  if (els.recordsDialog.open) {
+    const worksTab = els.recordsTabs.querySelector('[data-records-tab="works"]');
+    if (worksTab?.classList.contains("active")) loadWorksList();
+  }
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  els.themeToggle.textContent = theme === "dark" ? "☀" : "☾";
+  try {
+    localStorage.setItem("declarative-font-editor-theme", theme);
+  } catch {
+    // Theme preference is optional.
+  }
+}
+
+function applyLayout() {
+  els.layout.classList.toggle("hide-left", Boolean(state.view.navHidden));
+  els.layout.classList.toggle("hide-right", Boolean(state.view.inspectorHidden));
+  els.toggleNav.classList.toggle("active", Boolean(state.view.navHidden));
+  els.toggleInspector.classList.toggle("active", Boolean(state.view.inspectorHidden));
+}
+
+function setRecordsTab(tab) {
+  for (const button of els.recordsTabs.querySelectorAll("[data-records-tab]")) {
+    button.classList.toggle("active", button.dataset.recordsTab === tab);
+  }
+  for (const panel of els.recordsDialog.querySelectorAll("[data-records-panel]")) {
+    panel.hidden = panel.dataset.recordsPanel !== tab;
+  }
+  if (tab === "history") renderHistory();
+  if (tab === "compare") {
+    renderBaseSelects();
+    updateFontUi();
+  }
+}
+
+function openRecords(tab = "works") {
+  if (!els.recordsDialog.open) els.recordsDialog.showModal();
+  setRecordsTab(tab);
 }
 
 function groupName(group) {
@@ -222,14 +303,14 @@ function currentCodepoint() {
 
 function ownInfo(group = currentGroup(), index = state.selected?.index) {
   if (!group || index == null) return null;
-  if (!group.texture) return { ok: false, reason: "합성 전용 그룹입니다. 자식 그룹을 선택하세요" };
+  if (!group.texture) return { ok: false, reason: t("status.noTexture") };
   const resolved = sourcePath(state.workspace.declaration, group.texture.set, group.texture.source);
   if (resolved.error) return { ok: false, reason: resolved.error };
   const asset = state.workspace.assets.get(resolved.path);
-  if (!asset) return { ok: false, reason: `리소스 없음: ${resolved.path}`, path: resolved.path };
+  if (!asset) return { ok: false, reason: t("status.resourceMissing", { path: resolved.path }), path: resolved.path };
   const box = cropBox(group, index);
   if (box.x < 0 || box.y < 0 || box.x + box.width > asset.width || box.y + box.height > asset.height) {
-    return { ok: false, reason: "추출 범위 오류", path: resolved.path, asset, box };
+    return { ok: false, reason: t("status.cropError"), path: resolved.path, asset, box };
   }
   return { ok: true, asset, path: resolved.path, box };
 }
@@ -241,11 +322,11 @@ function canEdit() {
 function ensureEditable() {
   if (!state.workspace) return false;
   if (state.storage.readOnly) {
-    els.toolStatus.textContent = "다른 탭에서 편집 중이라 읽기 전용입니다";
+    els.toolStatus.textContent = t("status.lockReadOnly");
     return false;
   }
   if (state.storage.blocked) {
-    els.toolStatus.textContent = "저장 실패 상태입니다. 다시 저장하거나 임시 작업을 선택하세요";
+    els.toolStatus.textContent = t("status.blocked");
     return false;
   }
   return true;
@@ -261,6 +342,9 @@ function defaultView(declaration) {
     hidden: [],
     ownHidden: false,
     childrenHidden: false,
+    childFilter: true,
+    navHidden: false,
+    inspectorHidden: false,
     diff: false,
     onion: false,
     diffBase: "r0",
@@ -276,7 +360,7 @@ function newWorkspace(declaration, text, fileName) {
   const assets = new AssetStore();
   const chosen = [...declaration.unicodeMap.entries()].sort((a, b) => a[0] - b[0])[0];
   const firstGroup = declaration.groups.keys().next().value ?? null;
-  const name = declaration.metadata.get("name") || fileName.replace(/\.json$/i, "") || "새 작업";
+  const name = declaration.metadata.get("name") || fileName.replace(/\.json$/i, "") || t("works.new");
   const workspace = {
     id,
     name,
@@ -334,7 +418,7 @@ function adoptWorkspace(workspace, { restored = false } = {}) {
   els.emptyState.hidden = true;
   els.editor.hidden = false;
   refreshAll();
-  setStatus(state.storage.readOnly ? "읽기 전용" : restored ? "브라우저에 저장됨" : "변경 없음", restored ? "saved" : "");
+  setStatus(state.storage.readOnly ? t("status.readOnly") : restored ? t("status.saved") : t("status.unchanged"), restored ? "saved" : "");
   persist("open");
 }
 
@@ -347,7 +431,7 @@ async function openDeclarationFile(file) {
     if (state.storage.lock) state.storage.lock.release();
     adoptWorkspace(workspace);
   } catch (error) {
-    setStatus(`선언을 열지 못했습니다: ${error.message}`, "failed");
+    setStatus(t("status.openFailed", { message: error.message }), "failed");
     els.globalError.textContent = error.message;
   }
 }
@@ -355,11 +439,11 @@ async function openDeclarationFile(file) {
 async function persist(reason = "edit") {
   if (!state.workspace) return;
   if (state.storage.temp) {
-    setStatus("임시 작업 (저장하지 않음)", "saving");
+    setStatus(t("status.temp"), "temp");
     return;
   }
   if (state.storage.readOnly) {
-    setStatus("읽기 전용", "saved");
+    setStatus(t("status.readOnly"), "saved");
     return;
   }
   state.workspace.view = {
@@ -373,7 +457,7 @@ async function persist(reason = "edit") {
     : state.workspace.font ?? null;
   const token = ++state.saveToken;
   const workspace = state.workspace;
-  setStatus("저장 중…", "saving");
+  setStatus(t("status.saving"), "saving");
   state.saveQueue = state.saveQueue
     .then(() => {
       if (workspace.deleted) return null;
@@ -382,13 +466,13 @@ async function persist(reason = "edit") {
     .then(() => {
       if (token !== state.saveToken) return;
       state.storage.blocked = false;
-      setStatus("브라우저에 저장됨", "saved");
+      setStatus(t("status.saved"), "saved");
       updateToolAvailability();
     })
     .catch((error) => {
       if (token !== state.saveToken) return;
       state.storage.blocked = true;
-      setStatus(`저장 실패: ${error.message}`, "failed");
+      setStatus(t("status.failed", { message: error.message }), "failed");
       updateToolAvailability();
       showSaveFailure();
     });
@@ -397,16 +481,16 @@ async function persist(reason = "edit") {
 
 function showSaveFailure() {
   const status = els.saveStatus;
-  status.title = "저장 실패. 다시 저장하거나 임시 작업으로 계속할 수 있습니다.";
+  status.title = t("status.blocked");
   if ($("#retry-save")) return;
-  const retry = el("button", { id: "retry-save", class: "small", text: "다시 저장", onclick: () => { $("#retry-save")?.remove(); persist("retry"); } });
-  const temp = el("button", { id: "temp-save", class: "small", text: "임시 작업", onclick: () => {
+  const retry = el("button", { id: "retry-save", class: "small", text: t("status.retry"), onclick: () => { $("#retry-save")?.remove(); persist("retry"); } });
+  const temp = el("button", { id: "temp-save", class: "small", text: t("status.tempAction"), onclick: () => {
     state.storage.temp = true;
     state.storage.blocked = false;
     $("#retry-save")?.remove();
     $("#temp-save")?.remove();
     updateToolAvailability();
-    setStatus("임시 작업 (저장하지 않음)", "saving");
+    setStatus(t("status.temp"), "temp");
   } });
   status.after(retry, temp);
 }
@@ -422,6 +506,7 @@ async function loadWorkspaceFont(fontData) {
     state.font = font;
     state.shadow = clampShadowSettings(font.settings);
     updateFontUi();
+    drawBoard();
     drawContext();
   } catch (error) {
     els.fontStatus.textContent = error.message;
@@ -434,7 +519,8 @@ function renderSetSelect() {
   els.setSelect.replaceChildren();
   if (!state.workspace) return;
   for (const set of discoverSets(state.workspace.declaration)) {
-    els.setSelect.append(el("option", { value: set.id, text: `${set.name} (${set.mapped}/${set.all})` }));
+    const name = t(SET_KEYS[set.id] ?? set.id);
+    els.setSelect.append(el("option", { value: set.id, text: `${name} (${set.mapped}/${set.all})` }));
   }
   els.setSelect.value = state.set.id;
 }
@@ -455,7 +541,7 @@ function renderNavigator() {
   const page = paginate(items, state.set.page, state.set.pageSize);
   state.set.page = page.page;
   const all = discoverSets(state.workspace.declaration).find((set) => set.id === state.set.id);
-  els.setSummary.textContent = all ? `매핑 ${all.mapped} / 셋 전체 ${all.all}` : "";
+  els.setSummary.textContent = all ? t("nav.mappedSummary", { mapped: all.mapped, all: all.all }) : "";
   els.pageInput.value = String(page.page + 1);
   els.pageCount.textContent = `/ ${page.pageCount}`;
   els.characterGrid.replaceChildren();
@@ -471,7 +557,7 @@ function renderNavigator() {
       if (result.errors.length) {
         thumb.title = result.errors[0].message;
         slot.classList.add("has-error");
-        slot.append(el("span", { class: "cp", text: "리소스 오류" }));
+        slot.append(el("span", { class: "cp", text: t("nav.resourceError") }));
       }
       slot.append(thumb);
       if (state.selected && target.group === state.selected.group && target.index === state.selected.index) slot.classList.add("selected");
@@ -482,12 +568,12 @@ function renderNavigator() {
       slot.classList.add("unmapped");
       slot.append(el("span", { text: "—" }));
       slot.append(el("span", { class: "cp", text: codepointLabel(cp) }));
-      slot.append(el("span", { class: "cp", text: "매핑 없음" }));
+      slot.append(el("span", { class: "cp", text: t("nav.unmapped") }));
       slot.addEventListener("click", () => {
         state.selected = null;
         state.context = null;
         state.selection = null;
-        els.toolStatus.textContent = `${codepointLabel(cp)} · 선언에 매핑 없음`;
+        els.toolStatus.textContent = t("nav.unmappedStatus", { cp: codepointLabel(cp) });
         drawBoard();
         drawContext();
         renderGroupInfo();
@@ -495,7 +581,7 @@ function renderNavigator() {
     }
     els.characterGrid.append(slot);
   }
-  if (page.items.length === 0) els.characterGrid.append(el("div", { class: "muted", text: "결과 0개" }));
+  if (page.items.length === 0) els.characterGrid.append(el("div", { class: "muted", text: t("nav.noResults") }));
 
   els.groupList.replaceChildren();
   const query = els.groupSearch.value.trim();
@@ -505,7 +591,7 @@ function renderNavigator() {
       class: `group-item${state.selected?.group === group.name ? " selected" : ""}`,
       type: "button",
       onclick: () => selectGlyph(group.name, Math.min(state.selected?.index ?? 0, group.count - 1), { keepContext: false }),
-    }, el("strong", { text: group.name }), el("small", { text: ` · ${group.count}개 · ${group.width}×${group.height}` }));
+    }, el("strong", { text: group.name }), el("small", { text: ` · ${group.count} · ${group.width}×${group.height}` }));
     els.groupList.append(item);
   }
 }
@@ -718,16 +804,21 @@ function drawBoard() {
     ctx.drawImage(imageCanvas({ width: state.currentOnion.width, height: state.currentOnion.height, data: tinted }), 0, 0, els.board.width, els.board.height);
     ctx.restore();
   }
+  drawShadow(ctx, zoom, currentGlyphTarget());
   drawGrid(ctx, display, zoom);
   drawSelection(ctx, zoom);
   if (counts) {
-    els.diffCounts.textContent = `추가 ${counts.added} · 삭제 ${counts.removed} · 변경 ${counts.changed}`;
-  } else if (state.view.diff) els.diffCounts.textContent = "기준 픽셀 없음";
+    els.diffCounts.textContent = t("history.diffCounts", counts);
+  } else if (state.view.diff) els.diffCounts.textContent = t("compare.noBase");
 
   const selection = state.selection;
-  els.selectionStatus.textContent = selection ? `선택 ${selection.width}×${selection.height} @ (${selection.x},${selection.y})` : "선택 없음";
+  els.selectionStatus.textContent = selection
+    ? t("status.selection", selection)
+    : t("status.selectionNone");
   const reason = info?.ok ? null : info?.reason;
-  els.toolStatus.textContent = previewing ? `${previewing} 읽기 전용 미리보기` : reason ?? `${group.name}[${index}] · ${state.view.tool}`;
+  els.toolStatus.textContent = previewing
+    ? t("history.preview", { id: previewing })
+    : reason ?? t("status.editing", { group: group.name, index, tool: t(`tool.${state.view.tool}`) });
   els.board.classList.toggle("readonly", Boolean(reason) || Boolean(previewing) || !canEdit());
 }
 
@@ -746,12 +837,12 @@ function drawContext() {
     const baseResult = rendererForState(getBaseState(state.view.diffBase)).renderGlyph(target.group, target.index);
     const diff = diffImages(baseResult.image, result.image);
     display = diffTintImage(result.image, baseResult.image);
-    els.diffCounts.textContent = `추가 ${diff.counts.added} · 삭제 ${diff.counts.removed} · 변경 ${diff.counts.changed}`;
-    els.contextLabel.textContent = `${codepointLabel(currentCodepoint() ?? 0)} · 결과 비교`;
+    els.diffCounts.textContent = t("history.diffCounts", diff.counts);
+    els.contextLabel.textContent = t("context.compare", { cp: codepointLabel(currentCodepoint() ?? 0) });
   }
   if (state.view.onion) {
     state.contextOnion = rendererForState(getBaseState(state.view.onionBase)).renderGlyph(target.group, target.index).image;
-    if (!state.view.diff) els.contextLabel.textContent = `${codepointLabel(currentCodepoint() ?? 0)} · 결과`;
+    if (!state.view.diff) els.contextLabel.textContent = t("context.result", { cp: codepointLabel(currentCodepoint() ?? 0) });
   }
   const zoom = Math.max(1, Math.round(Math.min(8, 220 / Math.max(1, display.width, display.height))));
   const ctx = drawImageToCanvas(els.context, display, zoom);
@@ -774,20 +865,22 @@ function drawContext() {
   drawShadow(ctx, zoom, target);
   if (!state.view.diff) {
     const cp = currentCodepoint();
-    els.contextLabel.textContent = cp == null ? "결과 문맥 없음" : `${codepointLabel(cp)} → ${target.group}[${target.index}]`;
+    els.contextLabel.textContent = cp == null
+      ? t("context.none")
+      : t("context.glyph", { cp: codepointLabel(cp), group: target.group, index: target.index });
   }
-  if (result.errors.length) els.contextLabel.textContent = `결과 오류: ${result.errors[0].message}`;
+  if (result.errors.length) els.contextLabel.textContent = t("status.contextError", { message: result.errors[0].message });
 }
 
 function drawShadow(ctx, zoom, target) {
   if (!state.font || !state.shadow.visible) return;
   const cp = currentCodepoint();
   if (cp == null) {
-    els.fontStatus.textContent = "사용처 글자를 선택하세요";
+    els.fontStatus.textContent = t("status.fontNoContext");
     return;
   }
   if (!state.font.hasCodepoint(cp)) {
-    els.fontStatus.textContent = "참고 폰트에 글자 없음";
+    els.fontStatus.textContent = t("status.fontNoChar");
     return;
   }
   const dpr = globalThis.devicePixelRatio || 1;
@@ -811,7 +904,7 @@ function renderGroupInfo() {
   els.textureInfo.replaceChildren();
   els.layerList.replaceChildren();
   if (!group || !state.selected) {
-    els.groupDetail.textContent = "선택 없음";
+    els.groupDetail.textContent = t("group.none");
     els.groupIndexControls.hidden = true;
     return;
   }
@@ -819,23 +912,23 @@ function renderGroupInfo() {
   els.groupIndexControls.hidden = false;
   els.indexInput.value = String(index);
   els.indexInput.max = String(group.count - 1);
-  els.indexCount.textContent = `/ ${group.count}개 · ${group.width}×${group.height}`;
+  els.indexCount.textContent = `/ ${group.count} · ${group.width}×${group.height}`;
   els.groupDetail.append(
     el("strong", { text: group.name }),
-    el("div", { text: group.description ? group.description : "설명 없음", class: group.description ? "" : "muted" }),
-    el("div", { class: "muted", text: `인덱스 ${index} / ${group.count}` }),
+    el("div", { text: group.description ? group.description : t("group.noDescription"), class: group.description ? "" : "muted" }),
+    el("div", { class: "muted", text: t("group.index", { index, count: group.count }) }),
   );
   const info = ownInfo(group, index);
   if (group.texture) {
     const resolved = sourcePath(state.workspace.declaration, group.texture.set, group.texture.source);
     els.textureInfo.append(
-      el("div", { text: `텍스처: ${group.texture.set}/${group.texture.source}` }),
+      el("div", { text: t("group.texture", { set: group.texture.set, source: group.texture.source }) }),
       el("div", { class: "muted", text: resolved.path ?? resolved.error }),
-      el("div", { class: info.ok ? "" : "error-text", text: info.ok ? `연결됨 · ${info.asset.width}×${info.asset.height} · 추출 (${info.box.x},${info.box.y})` : info.reason }),
-      el("button", { class: "small", text: "소스 연결", onclick: openSources }),
+      el("div", { class: info.ok ? "" : "error-text", text: info.ok ? t("group.connected", { width: info.asset.width, height: info.asset.height, x: info.box.x, y: info.box.y }) : info.reason }),
+      el("button", { class: "small", text: t("group.sourceConnect"), onclick: openSources }),
     );
   } else {
-    els.textureInfo.append(el("div", { class: "muted", text: "텍스처 없음 · 합성 전용 그룹" }));
+    els.textureInfo.append(el("div", { class: "muted", text: t("group.noTexture") }));
   }
 
   const children = new Map();
@@ -844,32 +937,35 @@ function renderGroupInfo() {
     if (!children.has(imp.group)) children.set(imp.group, []);
     children.get(imp.group).push(importIndex);
   }
-  if (children.size === 0) {
-    els.childInfo.append(el("div", { class: "muted", text: "임포트한 자식 그룹 없음" }));
-  }
   const placements = state.workspace.declaration.placement(group.name).get(index) ?? [];
+  let shownChildren = 0;
   for (const [childName, imports] of children) {
     const child = state.workspace.declaration.groups.get(childName);
     const occurrences = placements.filter((item) => item.child === childName);
+    if (state.view.childFilter && occurrences.length === 0) continue;
+    shownChildren += 1;
     const box = el("div", { class: "list-item" },
       el("strong", { text: childName }),
-      el("div", { class: child.description ? "" : "muted", text: child.description || "설명 없음" }),
-      el("div", { class: "muted", text: occurrences.length ? `현재 인덱스 배치 ${occurrences.length}건 · 임포트 ${imports.join(", ")}` : "현재 글리프에는 배치 없음" }),
+      el("div", { class: child.description ? "" : "muted", text: child.description || t("group.noDescription") }),
+      el("div", { class: "muted", text: occurrences.length ? t("children.occurrences", { count: occurrences.length, imports: imports.join(", ") }) : t("children.notPlaced") }),
     );
     if (occurrences.length) {
       for (const occurrence of occurrences) {
         box.append(el("button", { class: "small", text: `${childName}[${occurrence.childIndex}]`, onclick: () => selectGlyph(childName, occurrence.childIndex, { keepContext: true }) }));
       }
     } else {
-      box.append(el("button", { class: "small", text: `${childName}[0] 열기`, onclick: () => selectGlyph(childName, 0, { keepContext: true }) }));
+      box.append(el("button", { class: "small", text: t("children.open", { group: childName }), onclick: () => selectGlyph(childName, 0, { keepContext: true }) }));
     }
     els.childInfo.append(box);
+  }
+  if (shownChildren === 0) {
+    els.childInfo.append(el("div", { class: "muted", text: children.size === 0 ? t("children.none") : t("children.noCurrent") }));
   }
 
   const tree = buildLayerTree(state.workspace.declaration, group.name, index);
   const layers = flattenLayers(tree.root);
   if (layers.length === 0) {
-    els.layerList.append(el("div", { class: "muted", text: "자식 레이어 없음" }));
+    els.layerList.append(el("div", { class: "muted", text: t("layers.none") }));
   }
   for (const layer of layers) {
     const checkbox = el("input", { type: "checkbox", checked: !state.view.hidden.has(layer.id) });
@@ -896,7 +992,7 @@ function renderGroupInfo() {
 function renderUsageList(element, codepoints, { unknown = false } = {}) {
   element.replaceChildren();
   if (!codepoints) {
-    element.append(el("div", { class: "muted", text: "선택 없음" }));
+    element.append(el("div", { class: "muted", text: t("group.none") }));
     return;
   }
   const query = (state.usageQuery[element.id] ?? "").trim().toLowerCase();
@@ -908,7 +1004,7 @@ function renderUsageList(element, codepoints, { unknown = false } = {}) {
     })
     : codepoints;
   if (visible.length === 0) {
-    element.append(el("div", { class: "muted", text: codepoints.length ? "검색 결과 없음" : "없음" }));
+    element.append(el("div", { class: "muted", text: codepoints.length ? t("usage.noResults") : t("usage.none") }));
     return;
   }
   const page = paginate(visible, state.impactPage?.[element.id] ?? 0, 64);
@@ -916,22 +1012,22 @@ function renderUsageList(element, codepoints, { unknown = false } = {}) {
   for (const item of page.items) {
     const cp = typeof item === "number" ? item : item.codepoint;
     const target = state.workspace.declaration.unicodeMap.get(cp);
-    const label = target ? `${codepointLabel(cp)} ${characterDisplay(cp)} ${target.group}[${target.index}]` : `${codepointLabel(cp)} · 선언에 매핑 없음`;
-    const button = el("button", { class: "list-item", text: label });
+    const label = target ? `${codepointLabel(cp)} ${characterDisplay(cp)} ${target.group}[${target.index}]` : `${codepointLabel(cp)} · ${t("nav.unmapped")}`;
+    const button = el("button", { class: "list-item", text: label, title: target ? t("usage.go") : undefined });
     if (target) button.addEventListener("click", () => selectGlyph(target.group, target.index, { codepoint: cp }));
     element.append(button);
   }
   if (page.pageCount > 1) {
     const row = el("div", { class: "row wrap" });
     row.append(
-      el("button", { class: "small", text: "이전", disabled: page.page === 0, onclick: () => { state.impactPage[element.id] = page.page - 1; renderImpact(); } }),
+      el("button", { class: "small", text: t("nav.prev"), disabled: page.page === 0, onclick: () => { state.impactPage[element.id] = page.page - 1; renderImpact(); } }),
       el("span", { class: "muted", text: `${page.page + 1}/${page.pageCount}` }),
-      el("button", { class: "small", text: "다음", disabled: page.page >= page.pageCount - 1, onclick: () => { state.impactPage[element.id] = page.page + 1; renderImpact(); } }),
-      el("span", { class: "muted", text: query ? `검색 ${visible.length} / 전체 ${codepoints.length}` : `전체 ${codepoints.length}` }),
+      el("button", { class: "small", text: t("nav.next"), disabled: page.page >= page.pageCount - 1, onclick: () => { state.impactPage[element.id] = page.page + 1; renderImpact(); } }),
+      el("span", { class: "muted", text: query ? t("usage.filtered", { visible: visible.length, total: codepoints.length }) : t("usage.total", { count: codepoints.length }) }),
     );
     element.append(row);
   } else {
-    element.append(el("div", { class: "muted", text: query ? `검색 ${visible.length} / 전체 ${codepoints.length}` : `전체 ${codepoints.length}` }));
+    element.append(el("div", { class: "muted", text: query ? t("usage.filtered", { visible: visible.length, total: codepoints.length }) : t("usage.total", { count: codepoints.length }) }));
   }
 }
 
@@ -945,19 +1041,19 @@ function renderImpact() {
   const usages = state.workspace.declaration.usages(state.selected.group, state.selected.index);
   renderUsageList(els.structuralUsage, usages.map((item) => item.codepoint));
   if (!state.impact) {
-    els.possibleImpact.replaceChildren(el("div", { class: "muted", text: "변경 명령 없음" }));
-    els.actualImpact.replaceChildren(el("div", { class: "muted", text: "변경 명령 없음" }));
+    els.possibleImpact.replaceChildren(el("div", { class: "muted", text: t("impact.none") }));
+    els.actualImpact.replaceChildren(el("div", { class: "muted", text: t("impact.none") }));
     return;
   }
   if (state.impact.pending) {
-    els.possibleImpact.replaceChildren(el("div", { class: "muted", text: "계산 중…" }));
-    els.actualImpact.replaceChildren(el("div", { class: "muted", text: "계산 중…" }));
+    els.possibleImpact.replaceChildren(el("div", { class: "muted", text: t("impact.pending") }));
+    els.actualImpact.replaceChildren(el("div", { class: "muted", text: t("impact.pending") }));
     return;
   }
   renderUsageList(els.possibleImpact, state.impact.candidates);
   const actualNode = els.actualImpact;
   actualNode.replaceChildren();
-  if (state.impact.unknown.length) actualNode.append(el("div", { class: "muted", text: `판정 불가 ${state.impact.unknown.length}개` }));
+  if (state.impact.unknown.length) actualNode.append(el("div", { class: "muted", text: t("impact.unknown", { count: state.impact.unknown.length }) }));
   renderUsageList(actualNode, state.impact.actual);
 }
 
@@ -1006,12 +1102,12 @@ function renderHistory() {
   const history = state.workspace.history;
   const head = history.head;
   const branchCount = history.pathTo(head.id).length - 1;
-  els.historyInfo.textContent = `현재 ${head.id} · revision ${history.revisions.size - 1}개 · 경로 ${branchCount}단계`;
+  els.historyInfo.textContent = t("history.info", { head: head.id, count: history.revisions.size - 1, depth: branchCount });
   els.historyList.replaceChildren();
   for (const revision of historyOptions()) {
     const current = revision.id === head.id;
     const ancestor = history.pathTo(head.id).some((item) => item.id === revision.id);
-    const label = revision.kind === "original" ? "최초 원본" : revision.kind === "restore" ? "복원" : revision.start ? `${revision.start.group}[${revision.start.index}]` : revision.kind;
+    const label = revision.kind === "original" ? t("history.original") : revision.kind === "restore" ? t("history.restoreKind") : revision.start ? `${revision.start.group}[${revision.start.index}]` : revision.kind;
     const item = el("div", {
       class: `list-item history-item${current ? " current" : ""}`,
       role: "button",
@@ -1028,25 +1124,25 @@ function renderHistory() {
       el("strong", { text: revision.id }),
       el("span", { text: ` · ${label}` }),
       el("div", { class: "muted", text: new Date(revision.timestamp).toLocaleString() }),
-      current ? el("div", { class: "muted", text: "현재 상태" }) : ancestor ? el("div", { class: "muted", text: "현재 경로" }) : el("div", { class: "branch", text: "다른 분기" }),
+      current ? el("div", { class: "muted", text: t("history.current") }) : ancestor ? el("div", { class: "muted", text: t("history.onPath") }) : el("div", { class: "branch", text: t("history.otherBranch") }),
     );
     if (revision.start) {
       item.append(el("button", {
         class: "small",
-        text: `${revision.start.group}[${revision.start.index}]로 이동`,
+        text: t("history.moveTo", { group: revision.start.group, index: revision.start.index }),
         onclick: (event) => {
           event.stopPropagation();
           selectGlyph(revision.start.group, revision.start.index, { keepContext: true });
         },
       }));
     } else if (revision.changes.size) {
-      item.append(el("div", { class: "muted", text: `대상 ${[...revision.changes.keys()].join(", ")}` }));
+      item.append(el("div", { class: "muted", text: t("history.targets", { paths: [...revision.changes.keys()].join(", ") }) }));
     }
     els.historyList.append(item);
   }
   els.historyActions.hidden = !state.historyPreview;
   if (state.historyPreview) {
-    els.historyInfo.textContent += ` · 선택 ${state.historyPreview} (읽기 전용 미리보기)`;
+    els.historyInfo.textContent += ` · ${t("history.selected", { id: state.historyPreview })}`;
   }
   els.undo.disabled = !history.head.parent || !canEdit();
   els.redo.disabled = history.childrenOf(history.headId).length === 0 || !canEdit();
@@ -1059,7 +1155,7 @@ function renderBaseSelects() {
     const value = select === els.diffBase ? state.view.diffBase : state.view.onionBase;
     select.replaceChildren();
     for (const revision of revisions) {
-      select.append(el("option", { value: revision.id, text: revision.id === "r0" ? "최초 원본" : `${revision.id} · ${new Date(revision.timestamp).toLocaleTimeString()}` }));
+      select.append(el("option", { value: revision.id, text: revision.id === "r0" ? t("history.original") : `${revision.id} · ${new Date(revision.timestamp).toLocaleTimeString()}` }));
     }
     select.value = value;
   }
@@ -1083,8 +1179,8 @@ function drawTextPreview() {
     const scaled = scaleImage(result.image, Number(state.view.textZoom));
     drawImageToCanvas(els.textPreview, scaled, 1, true);
     els.textStatus.textContent = result.hasMappings
-      ? result.unmapped.length ? `미매핑/대체 ${result.unmapped.length}개` : ""
-      : "유니코드 매핑 없음";
+      ? result.unmapped.length ? t("text.unmapped", { count: result.unmapped.length }) : ""
+      : t("text.noMappings");
     if (result.errors.length) els.textStatus.textContent = result.errors[0].message;
   } catch (error) {
     els.textStatus.textContent = error.message;
@@ -1114,6 +1210,7 @@ function refreshAll() {
   els.gridToggle.checked = state.view.grid;
   els.ownHidden.checked = state.view.ownHidden;
   els.childrenHidden.checked = state.view.childrenHidden;
+  els.childFilter.checked = state.view.childFilter !== false;
   els.diffToggle.checked = state.view.diff;
   els.onionToggle.checked = state.view.onion;
   els.onionOpacity.value = String(state.view.onionOpacity);
@@ -1125,6 +1222,7 @@ function refreshAll() {
   els.pageSize.value = String(state.set.pageSize ?? 128);
   for (const button of document.querySelectorAll("[data-tool]")) button.classList.toggle("active", button.dataset.tool === state.view.tool);
   updateToolAvailability();
+  applyLayout();
   els.exportSingle.disabled = !ownInfo()?.ok;
   els.openSources.disabled = !state.workspace;
   els.exportAll.disabled = !state.workspace || state.workspace.assets.paths().length === 0;
@@ -1144,7 +1242,7 @@ function updateFontUi() {
   els.shadowControls.hidden = !state.font;
   els.shadowToggle.disabled = !state.font;
   els.shadowToggle.checked = Boolean(state.shadow.visible);
-  els.fontStatus.textContent = state.font ? state.font.name : "폰트 없음";
+  els.fontStatus.textContent = state.font ? state.font.name : t("compare.noFont");
   els.shadowSize.value = String(state.shadow.size);
   els.shadowX.value = String(state.shadow.x);
   els.shadowY.value = String(state.shadow.y);
@@ -1183,7 +1281,7 @@ function beginDraft(bounds = null) {
 
 function ownLayerWritable() {
   if (!state.view.ownHidden) return true;
-  els.toolStatus.textContent = "자기 레이어를 숨긴 동안에는 그리기/지우기/이동을 할 수 없습니다";
+  els.toolStatus.textContent = t("status.ownHidden");
   return false;
 }
 
@@ -1233,7 +1331,7 @@ function cancelDraft() {
 
 function startPaint(event, eraser = false) {
   if (previewId()) {
-    els.toolStatus.textContent = "과거 이력 미리보기 중입니다. 미리보기를 닫거나 복원하세요";
+    els.toolStatus.textContent = t("status.previewBlocked");
     return;
   }
   if (!ensureEditable() || !ownLayerWritable()) return;
@@ -1258,7 +1356,7 @@ function startSelection(event) {
   if (!group) return;
   const info = ownInfo();
   if (!info?.ok) {
-    els.toolStatus.textContent = info?.reason ?? "이 그룹은 선택할 수 없습니다";
+    els.toolStatus.textContent = info?.reason ?? t("status.noEdit");
     return;
   }
   const point = boardPoint(event);
@@ -1272,13 +1370,13 @@ function startSelection(event) {
 
 function startMove(event) {
   if (previewId()) {
-    els.toolStatus.textContent = "과거 이력 미리보기 중입니다. 미리보기를 닫거나 복원하세요";
+    els.toolStatus.textContent = t("status.previewBlocked");
     return;
   }
   const info = ownInfo();
   const selection = state.selection;
   if (!info?.ok || !selection) {
-    els.toolStatus.textContent = selection ? "편집할 수 없습니다" : "먼저 영역을 선택하세요";
+    els.toolStatus.textContent = selection ? t("status.noEdit") : t("status.selectFirst");
     return;
   }
   if (!ensureEditable() || !ownLayerWritable()) return;
@@ -1357,11 +1455,11 @@ function pointerUp(event) {
 function eraseSelection() {
   const selection = state.selection;
   if (!selection) {
-    els.toolStatus.textContent = "먼저 영역을 선택하세요";
+    els.toolStatus.textContent = t("status.selectFirst");
     return;
   }
   if (previewId()) {
-    els.toolStatus.textContent = "과거 이력 미리보기 중입니다. 미리보기를 닫거나 복원하세요";
+    els.toolStatus.textContent = t("status.previewBlocked");
     return;
   }
   if (!ensureEditable() || !ownLayerWritable()) return;
@@ -1404,11 +1502,13 @@ function renderSourceTable() {
   const rows = sourceRows(state.workspace.declaration, state.workspace.assets);
   const table = el("table");
   const header = el("tr");
-  for (const label of ["셋", "소스", "선언 경로", "필요 최소", "연결", "파일", "크기", "상태"]) header.append(el("th", { text: label }));
+  for (const label of ["sources.set", "sources.source", "sources.path", "sources.required", "sources.link", "sources.file", "sources.size", "sources.status"]) {
+    header.append(el("th", { text: t(label) }));
+  }
   table.append(el("thead", {}, header));
   const body = el("tbody");
   for (const row of rows) {
-    const pick = el("button", { class: "small", type: "button", text: "파일 선택", onclick: () => openManualLink(row.path) });
+    const pick = el("button", { class: "small", type: "button", text: t("sources.pick"), onclick: () => openManualLink(row.path) });
     const tr = el("tr");
     tr.append(
       el("td", { text: row.set }),
@@ -1418,7 +1518,7 @@ function renderSourceTable() {
       el("td", {}, pick),
       el("td", { text: row.asset?.path ?? "—" }),
       el("td", { text: row.asset ? `${row.asset.width}×${row.asset.height}` : "—" }),
-      el("td", { class: row.error ? "error" : "", text: row.error ?? row.status }),
+      el("td", { class: row.error ? "error" : "", text: row.error ?? t(row.asset ? "sources.linked" : "sources.unlinked") }),
     );
     body.append(tr);
   }
@@ -1443,7 +1543,7 @@ async function handleImages(files) {
       if (failed.length) {
         result.errors.push(...failed.map(([path, candidate]) => `${path}: ${candidate.error}`));
       } else {
-        const ok = await confirmAction(`연결된 ${result.replacements.size}개 이미지를 현재 이미지로 교체할까요? 전체 차이가 하나의 되돌릴 수 있는 명령으로 기록됩니다.`);
+        const ok = await confirmAction(t("sources.confirmReplace", { count: result.replacements.size }));
         if (ok) {
           const before = state.workspace.assets.snapshot();
           const pairs = [...result.replacements.entries()].map(([path, candidate]) => ({ path, bytes: candidate.bytes }));
@@ -1470,11 +1570,11 @@ async function handleImages(files) {
     drawBoard();
     drawContext();
     els.importReport.textContent = [
-      result.linked.length ? `${result.linked.length}개 연결` : "",
-      replaced ? `${replaced}개 교체` : "",
-      result.unreferenced.length ? `미참조 ${result.unreferenced.length}개 제외` : "",
-      result.skipped.length ? `건너뜀 ${result.skipped.length}개` : "",
-      result.errors.length ? `오류 ${result.errors.length}개: ${result.errors.join(" / ")}` : "",
+      result.linked.length ? t("sources.linkedCount", { count: result.linked.length }) : "",
+      replaced ? t("sources.replacedCount", { count: replaced }) : "",
+      result.unreferenced.length ? t("sources.unreferenced", { count: result.unreferenced.length }) : "",
+      result.skipped.length ? t("sources.skipped", { count: result.skipped.length }) : "",
+      result.errors.length ? t("sources.errors", { count: result.errors.length, errors: result.errors.join(" / ") }) : "",
     ].filter(Boolean).join(" · ");
   } catch (error) {
     els.importReport.textContent = error.message;
@@ -1490,7 +1590,7 @@ async function handleManualFile(file) {
     const bytes = new Uint8Array(await file.arrayBuffer());
     const existing = state.workspace.assets.get(target);
     if (existing) {
-      const ok = await confirmAction("현재 이미지를 교체할까요? 차이는 하나의 되돌릴 수 있는 명령으로 기록됩니다.");
+      const ok = await confirmAction(t("sources.confirmManual"));
       if (!ok) return;
       const before = state.workspace.assets.snapshot();
       await replaceAssets(state.workspace.declaration, state.workspace.assets, [{ path: target, bytes }]);
@@ -1517,47 +1617,46 @@ async function handleManualFile(file) {
 
 // ---------- works ----------
 
-async function openWorksList() {
-  els.worksDialog.showModal();
-  els.worksList.replaceChildren(el("div", { class: "muted", text: "불러오는 중…" }));
+async function loadWorksList() {
+  els.worksList.replaceChildren(el("div", { class: "muted", text: t("works.loading") }));
   try {
     const rows = await listWorkspaces();
     els.worksList.replaceChildren();
     if (rows.length === 0) {
-      els.worksList.append(el("div", { class: "muted", text: "저장된 작업 없음" }));
+      els.worksList.append(el("div", { class: "muted", text: t("works.none") }));
       return;
     }
     for (const row of rows) {
       const item = el("div", { class: "list-item" },
         el("strong", { text: row.name }),
-        el("div", { class: "muted", text: `${row.fileName} · ${row.images}개 이미지 · ${row.revisions} revisions` }),
+        el("div", { class: "muted", text: t("works.info", { file: row.fileName, images: row.images, revisions: row.revisions }) }),
         el("div", { class: "muted", text: new Date(row.updatedAt).toLocaleString() }),
       );
       const rowButtons = el("div", { class: "row wrap" });
       rowButtons.append(
-        el("button", { class: "small", text: "열기", onclick: async () => {
+        el("button", { class: "small", text: t("works.openAction"), onclick: async () => {
           try {
             const workspace = await loadWorkspace(row.id);
-            if (!workspace) throw new Error("작업을 찾지 못했습니다");
+            if (!workspace) throw new Error("Workspace not found");
             if (state.storage.lock) state.storage.lock.release();
-            els.worksDialog.close();
+            els.recordsDialog.close();
             adoptWorkspace(workspace, { restored: true });
           } catch (error) {
-            setStatus(`작업을 열지 못했습니다: ${error.message}`, "failed");
+            setStatus(t("works.loadFailed", { message: error.message }), "failed");
           }
         } }),
-        el("button", { class: "small", text: "이름 변경", onclick: async () => {
-          const name = prompt("새 작업 이름", row.name);
+        el("button", { class: "small", text: t("works.rename"), onclick: async () => {
+          const name = prompt(t("sources.renamePrompt"), row.name);
           if (!name) return;
           try {
             await renameWorkspace(row.id, name);
-            openWorksList();
+            loadWorksList();
           } catch (error) {
             setStatus(error.message, "failed");
           }
         } }),
-        el("button", { class: "small danger", text: "삭제", onclick: async () => {
-          const ok = await confirmAction(`"${row.name}" 작업을 삭제할까요? 이 작업의 선언/PNG/이력만 삭제됩니다.`);
+        el("button", { class: "small danger", text: t("works.delete"), onclick: async () => {
+          const ok = await confirmAction(t("sources.confirmDelete", { name: row.name }));
           if (!ok) return;
           const deleting = state.workspace?.id === row.id ? state.workspace : null;
           if (deleting) deleting.deleted = true;
@@ -1568,7 +1667,7 @@ async function openWorksList() {
               els.editor.hidden = true;
               els.emptyState.hidden = false;
             }
-            openWorksList();
+            loadWorksList();
           } catch (error) {
             if (deleting) deleting.deleted = false;
             setStatus(error.message, "failed");
@@ -1581,6 +1680,11 @@ async function openWorksList() {
   } catch (error) {
     els.worksList.replaceChildren(el("div", { class: "error-text", text: error.message }));
   }
+}
+
+async function openWorksList() {
+  openRecords("works");
+  await loadWorksList();
 }
 
 function confirmAction(message) {
@@ -1635,17 +1739,61 @@ async function doExportZip(kind) {
 // ---------- events ----------
 
 function bindEvents() {
-  els.openDeclaration.addEventListener("click", () => els.declarationFile.click());
+  els.toggleNav.addEventListener("click", () => {
+    state.view.navHidden = !state.view.navHidden;
+    applyLayout();
+    persist("view");
+  });
+  els.toggleInspector.addEventListener("click", () => {
+    state.view.inspectorHidden = !state.view.inspectorHidden;
+    applyLayout();
+    persist("view");
+  });
+  els.langToggle.addEventListener("click", () => {
+    setLanguage(getLanguage() === "ko" ? "en" : "ko");
+    applyLanguage();
+  });
+  els.themeToggle.addEventListener("click", () => {
+    applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+  });
+  els.fileMenuButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    els.fileMenu.hidden = !els.fileMenu.hidden;
+  });
+  document.addEventListener("click", (event) => {
+    if (!els.fileMenu.hidden && !event.target.closest(".menu-wrap")) els.fileMenu.hidden = true;
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !els.fileMenu.hidden) els.fileMenu.hidden = true;
+  });
+  for (const button of els.recordsTabs.querySelectorAll("[data-records-tab]")) {
+    button.addEventListener("click", () => {
+      setRecordsTab(button.dataset.recordsTab);
+      if (button.dataset.recordsTab === "works") loadWorksList();
+    });
+  }
+  els.openWorks.addEventListener("click", openWorksList);
+  els.emptyOpenWorks.addEventListener("click", openWorksList);
+  els.worksClose.addEventListener("click", () => els.recordsDialog.close());
+  els.childFilter.addEventListener("change", () => {
+    state.view.childFilter = els.childFilter.checked;
+    renderGroupInfo();
+    persist("view");
+  });
+  els.openDeclaration.addEventListener("click", () => {
+    els.fileMenu.hidden = true;
+    els.declarationFile.click();
+  });
   els.emptyOpenDeclaration.addEventListener("click", () => els.declarationFile.click());
   els.declarationFile.addEventListener("change", async () => {
     const file = els.declarationFile.files?.[0];
     els.declarationFile.value = "";
     if (file) await openDeclarationFile(file);
   });
-  els.openWorks.addEventListener("click", openWorksList);
-  els.emptyOpenWorks.addEventListener("click", openWorksList);
-  els.worksClose.addEventListener("click", () => els.worksDialog.close());
-  els.openSources.addEventListener("click", openSources);
+  els.openSources.addEventListener("click", () => {
+    els.fileMenu.hidden = true;
+    openSources();
+  });
   els.importImages.addEventListener("click", () => {
     state.linkTarget = null;
     els.imageFile.click();
@@ -1716,7 +1864,7 @@ function bindEvents() {
       state.set.search = els.globalSearch.value;
       state.set.page = 0;
       renderNavigator();
-    } else els.globalError.textContent = "이동할 대상을 찾지 못했습니다";
+    } else els.globalError.textContent = t("nav.jumpFailed");
   });
 
   els.toolbar.addEventListener("click", (event) => {
@@ -1773,6 +1921,7 @@ function bindEvents() {
       state.font = font;
       state.shadow = clampShadowSettings(font.settings);
       updateFontUi();
+      drawBoard();
       drawContext();
       persist("font");
     } catch (error) {
@@ -1784,6 +1933,7 @@ function bindEvents() {
       state.shadow = clampShadowSettings({ ...state.shadow, [key]: Number(input.value), visible: state.shadow.visible });
       state.font.settings = { ...state.shadow };
       updateFontUi();
+      drawBoard();
       drawContext();
       persist("font");
     });
@@ -1791,17 +1941,18 @@ function bindEvents() {
   els.shadowToggle.addEventListener("change", () => {
     state.shadow.visible = els.shadowToggle.checked;
     if (state.font) state.font.settings = { ...state.shadow };
+    drawBoard();
     drawContext();
     persist("font");
   });
 
-  els.exportSingle.addEventListener("click", doExportSingle);
-  els.exportChanged.addEventListener("click", () => doExportZip("changed"));
-  els.exportAll.addEventListener("click", () => doExportZip("all"));
+  els.exportSingle.addEventListener("click", () => { els.fileMenu.hidden = true; doExportSingle(); });
+  els.exportChanged.addEventListener("click", () => { els.fileMenu.hidden = true; doExportZip("changed"); });
+  els.exportAll.addEventListener("click", () => { els.fileMenu.hidden = true; doExportZip("all"); });
 
   els.restoreRevision.addEventListener("click", async () => {
     if (!state.historyPreview || !ensureEditable()) return;
-    const ok = await confirmAction("모든 PNG 자산을 선택한 revision 상태로 복원할까요? 현재 이력 뒤에 새 복원 명령이 추가됩니다.");
+    const ok = await confirmAction(t("sources.confirmRestore"));
     if (!ok) return;
     cancelDraft();
     const revision = state.workspace.history.restore(state.historyPreview);
@@ -1968,18 +2119,30 @@ function commitKeyMove() {
   commitDraft();
 }
 
+initLanguage();
+els.langToggle.textContent = getLanguage() === "ko" ? "EN" : "한";
+els.langToggle.title = getLanguage() === "ko" ? "Switch to English" : "한국어로 전환";
+let initialTheme = "light";
+try {
+  initialTheme = localStorage.getItem("declarative-font-editor-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+} catch {
+  initialTheme = "light";
+}
+applyTheme(initialTheme);
+applyLayout();
+
 refreshAllInitial();
 
 function refreshAllInitial() {
   renderSetSelect();
-  els.characterGrid.replaceChildren(el("div", { class: "muted", text: "선언을 여세요" }));
+  els.characterGrid.replaceChildren(el("div", { class: "muted", text: t("nav.openPrompt") }));
   els.undo.disabled = true;
   els.redo.disabled = true;
   bindEvents();
   setInterval(() => {
     if (!state.workspace || !state.storage.readOnly || !state.storage.lock?.tryAcquire()) return;
     state.storage.readOnly = false;
-    setStatus("브라우저에 저장됨", "saved");
+    setStatus(t("status.saved"), "saved");
     refreshAll();
   }, 5000);
 }

@@ -93,6 +93,8 @@ try {
   });
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 720 });
+  const pageErrors = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
   const origin = new URL(base).origin;
   page.on("request", (request) => {
     const url = request.url();
@@ -116,14 +118,42 @@ try {
 
   await (await page.$("#image-file")).uploadFile(pngPath);
   await page.waitForFunction(() => window.__editor.state.workspace.assets.has("sheet.png"));
-  await page.waitForFunction(() => document.querySelector("#save-status").textContent.includes("저장됨"));
+  await page.waitForFunction(() => document.querySelector("#save-status").classList.contains("saved"));
+
+  assert.equal(await page.$eval("#child-filter", (node) => node.checked), true);
+  assert.equal(await page.$eval('[data-tool="pencil"]', (node) => node.textContent.trim()), "");
+  await page.click("#lang-toggle");
+  assert.equal(await page.evaluate(() => document.documentElement.lang), "en");
+  assert.equal(await page.$eval("#open-declaration", (node) => node.textContent), "Open declaration");
+  await page.click("#lang-toggle");
+  assert.equal(await page.evaluate(() => document.documentElement.lang), "ko");
+  await page.click("#theme-toggle");
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "dark");
+  await page.click("#theme-toggle");
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "light");
+  await page.click("#toggle-nav");
+  assert.equal(await page.$eval("#layout", (node) => node.classList.contains("hide-left")), true);
+  await page.click("#toggle-nav");
+  await page.click("#toggle-inspector");
+  assert.equal(await page.$eval("#layout", (node) => node.classList.contains("hide-right")), true);
+  await page.click("#toggle-inspector");
 
   if (existsSync(FONT)) {
     await (await page.$("#font-file")).uploadFile(FONT);
     await page.waitForFunction(() => window.__editor.state.font?.hasCodepoint(0x41) === true);
+    await page.click("#open-works");
+    await page.click('[data-records-tab="compare"]');
     assert.equal(await page.$eval("#shadow-toggle", (node) => node.disabled), false);
     await page.click("#shadow-toggle");
     assert.equal(await page.evaluate(() => window.__editor.state.shadow.visible), true);
+    const shadowPixels = await page.$eval("#board", (canvas) => {
+      const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+      let count = 0;
+      for (let index = 3; index < data.length; index += 4) if (data[index] !== 0) count += 1;
+      return count;
+    });
+    assert.ok(shadowPixels > 10, "font shadow must be visible on the drawing board");
+    await page.click("#works-close");
   }
 
   const board = await page.$("#board");
@@ -131,12 +161,13 @@ try {
   assert.ok(box.width >= 32 && box.height >= 16);
   await page.mouse.click(box.x + 8, box.y + 8);
   await page.waitForFunction(() => window.__editor.state.workspace.history.revisions.size === 2);
-  await page.waitForFunction(() => document.querySelector("#save-status").textContent.includes("저장됨"));
+  await page.waitForFunction(() => document.querySelector("#save-status").classList.contains("saved"));
 
   await page.mouse.click(box.x + 24, box.y + 8, { button: "right" });
   await page.waitForFunction(() => window.__editor.state.workspace.history.revisions.size === 3);
-  await page.waitForFunction(() => document.querySelector("#save-status").textContent.includes("저장됨"));
+  await page.waitForFunction(() => document.querySelector("#save-status").classList.contains("saved"));
 
+  await page.click("#file-menu-button");
   await page.click("#export-changed");
   const zipPath = await waitDownload(downloadDir, "Browser-textures.zip");
   const zipBytes = new Uint8Array(readFileSync(zipPath));
@@ -165,6 +196,19 @@ try {
   assert.equal(restored.head, head);
   assert.deepEqual(restored.pixels, [0, 0, 0, 255, 0, 0, 0, 0]);
 
+  await (await page.$("#declaration-file")).uploadFile(join(REPO_ROOT, "examples/hangul.json"));
+  await page.waitForFunction(() => window.__editor.state.workspace.declaration.unicodeMap.size === 11267);
+  await (await page.$("#image-file")).uploadFile(join(REPO_ROOT, "examples/hangul.png"));
+  await page.waitForFunction(() => window.__editor.state.workspace.assets.has("hangul.png"));
+  await page.evaluate(() => window.__editor.selectGlyph("initial_0", 0, { keepContext: false }));
+  await page.waitForFunction(() => Boolean(document.querySelector("#structural-usage button")));
+  await page.click("#structural-usage button");
+  await page.waitForFunction(() => window.__editor.state.selected?.group === "hangul_syllables");
+  assert.equal(await page.$$eval("#child-info .list-item", (nodes) => nodes.length), 2);
+  await page.click("#child-filter");
+  assert.ok((await page.$$eval("#child-info .list-item", (nodes) => nodes.length)) > 2);
+  await page.click("#child-filter");
+
   const directServer = serve(EDITOR_ROOT);
   directServer.listen(0, "127.0.0.1");
   await once(directServer, "listening");
@@ -178,6 +222,7 @@ try {
     directServer.close();
   }
 
+  assert.deepEqual(pageErrors, []);
   assert.deepEqual(externalRequests, []);
   console.log("browser: Chromium headless passed (repo subpath and editor-root serving, offline edits/save/export, reload restore, no remote requests)");
 } finally {

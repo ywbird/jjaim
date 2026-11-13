@@ -3,81 +3,101 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>선언 기반 글꼴 텍스처 편집기</title>
+    <title data-i18n="app.title">선언 기반 글꼴 텍스처 편집기</title>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <header id="topbar">
-      <strong>텍스처 편집기</strong>
-      <button id="open-declaration">선언 열기</button>
-      <button id="open-works">저장된 작업</button>
-      <button id="open-sources" disabled>소스 연결</button>
+      <button id="toggle-nav" class="icon-btn" data-i18n-title="nav.toggle" aria-label="탐색 패널">◧</button>
+      <strong data-i18n="app.shortTitle">텍스처 편집기</strong>
       <span id="workspace-name"></span>
-      <span id="save-status" class="status">변경 없음</span>
+      <span id="save-status" class="status-icon" role="status" aria-live="polite" title="변경 없음">●</span>
       <span class="spacer"></span>
-      <button id="export-single" disabled>선택 PNG</button>
-      <button id="export-changed" disabled>변경 ZIP</button>
-      <button id="export-all" disabled>전체 ZIP</button>
+      <button id="lang-toggle" class="icon-btn" title="English">EN</button>
+      <button id="theme-toggle" class="icon-btn" data-i18n-title="theme.toggle" aria-label="다크 모드">☾</button>
+      <button id="open-works" class="icon-btn" data-i18n-title="works.open" aria-label="저장된 작업">▤</button>
+      <div class="menu-wrap">
+        <button id="file-menu-button" class="icon-btn" data-i18n-title="menu.title" aria-label="불러오기/내보내기">☰</button>
+        <div id="file-menu" class="menu" hidden>
+          <button id="open-declaration" class="menu-item" data-i18n="menu.openDeclaration">선언 열기</button>
+          <button id="open-sources" class="menu-item" data-i18n="menu.sources" disabled>소스 연결</button>
+          <hr>
+          <button id="export-single" class="menu-item" data-i18n="menu.exportSingle" disabled>선택 PNG</button>
+          <button id="export-changed" class="menu-item" data-i18n="menu.exportChanged" disabled>변경 ZIP</button>
+          <button id="export-all" class="menu-item" data-i18n="menu.exportAll" disabled>전체 ZIP</button>
+        </div>
+      </div>
+      <button id="toggle-inspector" class="icon-btn" data-i18n-title="inspector.toggle" aria-label="정보 패널">◨</button>
     </header>
 
     <main id="layout">
       <aside id="navigator" class="panel">
         <section>
-          <label for="set-select">문자 셋</label>
+          <label for="set-select" data-i18n="nav.characterSet">문자 셋</label>
           <select id="set-select"></select>
-          <label class="check"><input id="mapped-only" type="checkbox" checked> 매핑된 문자만</label>
-          <div id="set-summary" class="muted">선언을 여세요</div>
-          <input id="character-search" type="search" placeholder="문자 검색 (여러 문자 가능)">
+          <label class="check"><input id="mapped-only" type="checkbox" checked> <span data-i18n="nav.mappedOnly">매핑된 문자만</span></label>
+          <div id="set-summary" class="muted" data-i18n="nav.openPrompt">선언을 여세요</div>
+          <input id="character-search" type="search" data-i18n-placeholder="nav.searchPlaceholder" placeholder="문자 검색 (여러 문자 가능)">
           <div id="character-grid" class="character-grid"></div>
           <div id="page-controls" class="row wrap">
-            <button id="page-first">처음</button>
-            <button id="page-prev">이전</button>
+            <button id="page-first" class="icon-btn" data-i18n-title="nav.first" aria-label="처음">«</button>
+            <button id="page-prev" class="icon-btn" data-i18n-title="nav.prev" aria-label="이전">‹</button>
             <input id="page-input" type="number" min="1" value="1" aria-label="페이지">
             <span id="page-count">/ 1</span>
-            <button id="page-next">다음</button>
-            <button id="page-last">끝</button>
+            <button id="page-next" class="icon-btn" data-i18n-title="nav.next" aria-label="다음">›</button>
+            <button id="page-last" class="icon-btn" data-i18n-title="nav.last" aria-label="끝">»</button>
             <select id="page-size">
-              <option value="64">64개</option>
-              <option value="128" selected>128개</option>
-              <option value="256">256개</option>
+              <option value="64">64</option>
+              <option value="128" selected>128</option>
+              <option value="256">256</option>
             </select>
           </div>
         </section>
         <hr>
         <section>
-          <label for="global-search">정확한 이동</label>
-          <input id="global-search" type="search" placeholder="U+AC00 또는 그룹명[0]">
+          <label for="global-search" data-i18n="nav.jump">정확한 이동</label>
+          <input id="global-search" type="search" data-i18n-placeholder="nav.jumpPlaceholder" placeholder="U+AC00 또는 그룹명[0]">
           <div id="global-error" class="error-text"></div>
-          <label for="group-search">그룹 이름 검색</label>
-          <input id="group-search" type="search" placeholder="그룹 이름 일부">
+          <label for="group-search" data-i18n="nav.groupSearch">그룹 이름 검색</label>
+          <input id="group-search" type="search" data-i18n-placeholder="nav.groupPlaceholder" placeholder="그룹 이름 일부">
           <div id="group-list" class="group-list"></div>
         </section>
       </aside>
 
       <section id="workspace">
         <div id="empty-state">
-          <h1>선언 기반 글꼴 텍스처 편집기</h1>
-          <p>선언 JSON을 열고 PNG 텍스처를 연결하세요. 예제는 자동으로 불러오지 않습니다.</p>
-          <button id="empty-open-declaration">선언 열기</button>
-          <button id="empty-open-works">저장된 작업</button>
+          <h1 data-i18n="empty.title">선언 기반 글꼴 텍스처 편집기</h1>
+          <p data-i18n="empty.body">선언 JSON을 열고 PNG 텍스처를 연결하세요. 예제는 자동으로 불러오지 않습니다.</p>
+          <button id="empty-open-declaration" data-i18n="menu.openDeclaration">선언 열기</button>
+          <button id="empty-open-works" data-i18n="works.open">저장된 작업</button>
         </div>
         <div id="editor" hidden>
           <div id="toolbar" class="row wrap">
-            <button data-tool="pencil" class="tool active">연필 (B)</button>
-            <button data-tool="eraser" class="tool">지우개 (E)</button>
-            <button data-tool="select" class="tool">선택 (S)</button>
-            <button data-tool="move" class="tool">이동 (V)</button>
-            <select id="zoom">
+            <button data-tool="pencil" class="tool active" data-i18n-title="tool.pencil" aria-label="연필">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1 11-11-3-3L5 16l-1 4zM13 5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+            </button>
+            <button data-tool="eraser" class="tool" data-i18n-title="tool.eraser" aria-label="지우개">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16l8-8 6 6-5 5H6l-2-3zM10 10l6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+            </button>
+            <button data-tool="select" class="tool" data-i18n-title="tool.select" aria-label="선택">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"/></svg>
+            </button>
+            <button data-tool="move" class="tool" data-i18n-title="tool.move" aria-label="이동">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <select id="zoom" aria-label="확대">
               <option>1</option><option>2</option><option>4</option><option>8</option>
               <option>12</option><option selected>16</option><option>24</option><option>32</option>
             </select>
-            <label class="check"><input id="grid-toggle" type="checkbox" checked> 격자</label>
-            <button id="select-all">전체 선택</button>
-            <button id="clear-selection">선택 해제</button>
-            <button id="delete-selection">선택 지우기</button>
+            <label class="check icon-check" data-i18n-title="tool.grid"><input id="grid-toggle" type="checkbox" checked><span class="grid-icon">▦</span></label>
+            <button id="select-all" class="icon-btn" data-i18n-title="tool.selectAll" aria-label="전체 선택">▣</button>
+            <button id="clear-selection" class="icon-btn" data-i18n-title="tool.clearSelection" aria-label="선택 해제">✕</button>
+            <button id="delete-selection" class="icon-btn" data-i18n-title="tool.deleteSelection" aria-label="선택 지우기">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
             <span class="spacer"></span>
-            <button id="undo">undo</button>
-            <button id="redo">redo</button>
+            <button id="undo" class="icon-btn" data-i18n-title="tool.undo" aria-label="되돌리기">↶</button>
+            <button id="redo" class="icon-btn" data-i18n-title="tool.redo" aria-label="다시 실행">↷</button>
             <span id="tool-status" class="status">그룹을 선택하세요</span>
           </div>
           <div id="board-wrap">
@@ -85,8 +105,8 @@
           </div>
           <div id="context-bar" class="row wrap">
             <span id="context-label" class="muted">결과 문맥 없음</span>
-            <label class="check"><input id="own-hidden" type="checkbox"> 자기 레이어 숨기기</label>
-            <label class="check"><input id="children-hidden" type="checkbox"> 자식 레이어 숨기기</label>
+            <label class="check"><input id="own-hidden" type="checkbox"> <span data-i18n="view.ownHidden">자기 레이어 숨기기</span></label>
+            <label class="check"><input id="children-hidden" type="checkbox"> <span data-i18n="view.childrenHidden">자식 레이어 숨기기</span></label>
             <span id="selection-status" class="muted">선택 없음</span>
           </div>
           <div id="context-row">
@@ -98,65 +118,43 @@
 
       <aside id="inspector" class="panel">
         <section id="group-info">
-          <h2>그룹</h2>
-          <div id="group-detail" class="muted">선택 없음</div>
+          <h2 data-i18n="group.title">그룹</h2>
+          <div id="group-detail" class="muted" data-i18n="group.none">선택 없음</div>
           <div id="group-index-controls" class="row wrap" hidden>
-            <button id="index-prev">◀</button>
+            <button id="index-prev" class="icon-btn" data-i18n-title="group.prevIndex" aria-label="이전 인덱스">◀</button>
             <input id="index-input" type="number" min="0" value="0">
             <span id="index-count"></span>
-            <button id="index-next">▶</button>
+            <button id="index-next" class="icon-btn" data-i18n-title="group.nextIndex" aria-label="다음 인덱스">▶</button>
           </div>
           <div id="texture-info"></div>
-          <h3>직계 자식</h3>
+          <div class="row wrap">
+            <h3 data-i18n="children.title">직계 자식</h3>
+            <span class="spacer"></span>
+            <label class="check"><input id="child-filter" type="checkbox" checked> <span data-i18n="children.currentOnly">현재 글리프 배치만</span></label>
+          </div>
           <div id="child-info" class="list"></div>
         </section>
         <hr>
         <section>
-          <h2>사용처와 영향</h2>
-          <h3>부품 사용처</h3>
-          <input class="usage-search" data-usage-search="structural-usage" type="search" placeholder="사용처 검색">
-          <div id="structural-usage" class="list muted">선택 없음</div>
-          <h3>영향 가능 문자</h3>
-          <input class="usage-search" data-usage-search="possible-impact" type="search" placeholder="영향 문자 검색">
-          <div id="possible-impact" class="list muted">변경 명령 없음</div>
-          <h3>실제 모양 변경</h3>
-          <input class="usage-search" data-usage-search="actual-impact" type="search" placeholder="실제 변경 검색">
-          <div id="actual-impact" class="list muted">변경 명령 없음</div>
+          <h2 data-i18n="usage.title">사용처와 영향</h2>
+          <h3 data-i18n="usage.structural">부품 사용처</h3>
+          <input class="usage-search" data-usage-search="structural-usage" type="search" data-i18n-placeholder="usage.searchStructural" placeholder="사용처 검색">
+          <div id="structural-usage" class="list muted" data-i18n="group.none">선택 없음</div>
+          <h3 data-i18n="usage.possible">영향 가능 문자</h3>
+          <input class="usage-search" data-usage-search="possible-impact" type="search" data-i18n-placeholder="usage.searchPossible" placeholder="영향 문자 검색">
+          <div id="possible-impact" class="list muted" data-i18n="impact.none">변경 명령 없음</div>
+          <h3 data-i18n="usage.actual">실제 모양 변경</h3>
+          <input class="usage-search" data-usage-search="actual-impact" type="search" data-i18n-placeholder="usage.searchActual" placeholder="실제 변경 검색">
+          <div id="actual-impact" class="list muted" data-i18n="impact.none">변경 명령 없음</div>
         </section>
         <hr>
         <section>
-          <h2>비교</h2>
-          <label class="check"><input id="diff-toggle" type="checkbox"> 픽셀 diff</label>
-          <div class="row">
-            <select id="diff-base"></select>
-            <span id="diff-counts" class="muted"></span>
-          </div>
-          <label class="check"><input id="onion-toggle" type="checkbox"> 어니언 스킨</label>
-          <div class="row">
-            <select id="onion-base"></select>
-            <input id="onion-opacity" type="range" min="0" max="1" step="0.05" value="0.25">
-          </div>
-          <h3>참고 폰트 섀도</h3>
-          <div class="row wrap">
-            <button id="load-font">폰트 열기</button>
-            <label class="check"><input id="shadow-toggle" type="checkbox" disabled> 표시</label>
-            <span id="font-status" class="muted">폰트 없음</span>
-          </div>
-          <div id="shadow-controls" class="row wrap" hidden>
-            <label>크기 <input id="shadow-size" type="number" min="0.25" max="1024" step="0.25" value="16"></label>
-            <label>x <input id="shadow-x" type="number" min="-4096" max="4096" step="0.25" value="0"></label>
-            <label>y <input id="shadow-y" type="number" min="-4096" max="4096" step="0.25" value="0"></label>
-            <label>불투명 <input id="shadow-opacity" type="number" min="0" max="1" step="0.05" value="0.25"></label>
-          </div>
-        </section>
-        <hr>
-        <section>
-          <h2>문구 미리보기</h2>
+          <h2 data-i18n="text.title">문구 미리보기</h2>
           <select id="text-preset">
-            <option value="">직접 입력</option>
-            <option value="다람쥐 헌 쳇바퀴에 타고파.">한글 예문</option>
-            <option value="The quick brown fox jumps over the lazy dog.">영문 팬그램</option>
-            <option value="0123456789 !? @#$% &* () [] {} +-*/ = < >">숫자/기호</option>
+            <option value="" data-i18n="text.custom">직접 입력</option>
+            <option value="다람쥐 헌 쳇바퀴에 타고파." data-i18n="text.korean">한글 예문</option>
+            <option value="The quick brown fox jumps over the lazy dog." data-i18n="text.pangram">영문 팬그램</option>
+            <option value="0123456789 !? @#$% &* () [] {} +-*/ = < >" data-i18n="text.symbols">숫자/기호</option>
           </select>
           <textarea id="text-input" rows="2">다람쥐 헌 쳇바퀴에 타고파.</textarea>
           <div class="row">
@@ -165,46 +163,78 @@
           </div>
           <canvas id="text-preview" aria-label="문구 미리보기"></canvas>
         </section>
-        <hr>
-        <section>
-          <h2>이력</h2>
-          <div id="history-info" class="muted"></div>
-          <div id="history-list" class="list"></div>
-          <div id="history-actions" class="row wrap" hidden>
-            <button id="restore-revision">이 상태로 복원</button>
-            <button id="diff-use-revision">diff 기준</button>
-            <button id="onion-use-revision">어니언 기준</button>
-            <button id="clear-preview">미리보기 닫기</button>
-          </div>
-        </section>
       </aside>
     </main>
 
+    <dialog id="records-dialog">
+      <div class="dialog-body">
+        <div class="row">
+          <h2 data-i18n="records.title">작업 기록</h2>
+          <span class="spacer"></span>
+          <button id="works-close" class="icon-btn" data-i18n-title="common.close" aria-label="닫기">✕</button>
+        </div>
+        <div id="records-tabs" class="tabs" role="tablist">
+          <button class="tab" data-records-tab="works" data-i18n="works.open">저장된 작업</button>
+          <button class="tab" data-records-tab="history" data-i18n="history.title">이력</button>
+          <button class="tab" data-records-tab="compare" data-i18n="compare.title">비교</button>
+        </div>
+        <section data-records-panel="works">
+          <div id="works-list" class="list"></div>
+        </section>
+        <section data-records-panel="history" hidden>
+          <div id="history-info" class="muted"></div>
+          <div id="history-list" class="list"></div>
+          <div id="history-actions" class="row wrap" hidden>
+            <button id="restore-revision" data-i18n="history.restore">이 상태로 복원</button>
+            <button id="diff-use-revision" data-i18n="history.diffBase">diff 기준</button>
+            <button id="onion-use-revision" data-i18n="history.onionBase">어니언 기준</button>
+            <button id="clear-preview" data-i18n="history.clearPreview">미리보기 닫기</button>
+          </div>
+        </section>
+        <section data-records-panel="compare" hidden>
+          <label class="check"><input id="diff-toggle" type="checkbox"> <span data-i18n="compare.diff">픽셀 diff</span></label>
+          <div class="row">
+            <select id="diff-base"></select>
+            <span id="diff-counts" class="muted"></span>
+          </div>
+          <label class="check"><input id="onion-toggle" type="checkbox"> <span data-i18n="compare.onion">어니언 스킨</span></label>
+          <div class="row">
+            <select id="onion-base"></select>
+            <input id="onion-opacity" type="range" min="0" max="1" step="0.05" value="0.25">
+          </div>
+          <h3 data-i18n="compare.font">참고 폰트 섀도</h3>
+          <div class="row wrap">
+            <button id="load-font" data-i18n="compare.openFont">폰트 열기</button>
+            <label class="check"><input id="shadow-toggle" type="checkbox" disabled> <span data-i18n="compare.showFont">표시</span></label>
+            <span id="font-status" class="muted" data-i18n="compare.noFont">폰트 없음</span>
+          </div>
+          <div id="shadow-controls" class="row wrap" hidden>
+            <label><span data-i18n="compare.size">크기</span> <input id="shadow-size" type="number" min="0.25" max="1024" step="0.25" value="16"></label>
+            <label>x <input id="shadow-x" type="number" min="-4096" max="4096" step="0.25" value="0"></label>
+            <label>y <input id="shadow-y" type="number" min="-4096" max="4096" step="0.25" value="0"></label>
+            <label><span data-i18n="compare.opacity">불투명</span> <input id="shadow-opacity" type="number" min="0" max="1" step="0.05" value="0.25"></label>
+          </div>
+        </section>
+      </div>
+    </dialog>
+
     <dialog id="source-dialog">
       <form method="dialog" class="dialog-body">
-        <h2>소스 연결</h2>
-        <p class="muted">연결은 브라우저 작업의 자산 바인딩이며 선언을 수정하지 않습니다.</p>
+        <h2 data-i18n="sources.title">소스 연결</h2>
+        <p class="muted" data-i18n="sources.note">연결은 브라우저 작업의 자산 바인딩이며 선언을 수정하지 않습니다.</p>
         <div class="row wrap">
-          <button type="button" id="import-images">PNG/ZIP 가져오기</button>
+          <button type="button" id="import-images" data-i18n="sources.import">PNG/ZIP 가져오기</button>
           <span id="import-report" class="muted"></span>
         </div>
         <div id="source-table" class="source-table"></div>
-        <div class="row"><span class="spacer"></span><button value="close">닫기</button></div>
+        <div class="row"><span class="spacer"></span><button value="close" data-i18n="common.close">닫기</button></div>
       </form>
-    </dialog>
-
-    <dialog id="works-dialog">
-      <div class="dialog-body">
-        <h2>저장된 작업</h2>
-        <div id="works-list" class="list"></div>
-        <div class="row"><span class="spacer"></span><button id="works-close">닫기</button></div>
-      </div>
     </dialog>
 
     <dialog id="confirm-dialog">
       <form method="dialog" class="dialog-body">
         <p id="confirm-message"></p>
-        <div class="row"><span class="spacer"></span><button value="cancel">취소</button><button value="ok" id="confirm-ok">확인</button></div>
+        <div class="row"><span class="spacer"></span><button value="cancel" data-i18n="common.cancel">취소</button><button value="ok" id="confirm-ok" data-i18n="common.confirm">확인</button></div>
       </form>
     </dialog>
 
