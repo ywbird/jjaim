@@ -323,6 +323,34 @@ try {
   assert.deepEqual(importedProject.current, [0, 0, 0, 255, 0, 0, 0, 0]);
   assert.deepEqual(importedProject.original, [0, 0, 0, 0, 0, 0, 0, 255]);
 
+  await page.evaluate(() => window.__editor.selectGlyph("chars", 0));
+  await page.click('[data-tool="select"]');
+  const scrollBoard = await (await page.$("#board")).boundingBox();
+  await page.mouse.move(scrollBoard.x + 1, scrollBoard.y + 1);
+  await page.mouse.down();
+  await page.mouse.move(scrollBoard.x + scrollBoard.width - 1, scrollBoard.y + scrollBoard.height - 1);
+  await page.mouse.up();
+  await page.waitForFunction(() => window.__editor.state.view.tool === "move");
+  const selected = await page.evaluate(() => window.__editor.state.selection);
+  assert.deepEqual(selected, { x: 0, y: 0, width: 2, height: 1 });
+  const beforeMoveHead = await page.evaluate(() => window.__editor.state.workspace.history.headId);
+
+  const zoom = await page.evaluate(() => Number(window.__editor.state.view.zoom));
+  await page.mouse.move(scrollBoard.x + 8, scrollBoard.y + 8);
+  await page.mouse.down();
+  await page.mouse.move(scrollBoard.x + 8 + zoom * 4, scrollBoard.y + 8);
+  await page.waitForFunction((x) => window.__editor.state.selection.x === x, {}, 4);
+  const moving = await page.evaluate(() => window.__editor.state.selection);
+  assert.equal(moving.x, 4, "selection box must follow the drag before drop");
+  await page.mouse.up();
+  await page.waitForFunction((headId) => window.__editor.state.workspace.history.headId !== headId, {}, beforeMoveHead);
+  const trimmed = await page.evaluate(() => ({
+    selection: window.__editor.state.selection,
+    pixels: [...window.__editor.state.workspace.assets.get("sheet.png").current],
+  }));
+  assert.equal(trimmed.selection.x, 4);
+  assert.deepEqual(trimmed.pixels, [0, 0, 0, 0, 0, 0, 0, 0], "pixels outside the glyph must be trimmed");
+
   const directServer = serve(EDITOR_ROOT);
   directServer.listen(0, "127.0.0.1");
   await once(directServer, "listening");

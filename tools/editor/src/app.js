@@ -1347,11 +1347,22 @@ function assetRect(selection, box) {
   return { x: box.x + selection.x, y: box.y + selection.y, width: selection.width, height: selection.height };
 }
 
+function intersectRect(a, b) {
+  const x = Math.max(a.x, b.x);
+  const y = Math.max(a.y, b.y);
+  return {
+    x,
+    y,
+    width: Math.max(0, Math.min(a.x + a.width, b.x + b.width) - x),
+    height: Math.max(0, Math.min(a.y + a.height, b.y + b.height) - y),
+  };
+}
+
 function beginDraft(bounds = null) {
   const info = ownInfo();
   if (!info?.ok) return null;
   const previewAssets = state.workspace.assets.clone();
-  const draft = new PixelDraft(info.asset, bounds ?? info.box);
+  const draft = new PixelDraft(info.asset, bounds ? intersectRect(bounds, info.box) : info.box);
   return {
     draft,
     path: info.path,
@@ -1404,6 +1415,8 @@ function commitDraft() {
 
 function cancelDraft() {
   if (!state.draft) return;
+  if (state.drag?.kind === "move") state.selection = { ...state.drag.selection };
+  if (state.keyMove) state.selection = { ...state.keyMove.selection };
   state.draft = null;
   state.drag = null;
   state.keyMove = null;
@@ -1511,6 +1524,7 @@ function pointerMove(event) {
     state.draft.draft = draft;
     state.drag.dx = moved.dx;
     state.drag.dy = moved.dy;
+    state.selection = { ...state.drag.selection, x: state.drag.selection.x + moved.dx, y: state.drag.selection.y + moved.dy };
     drawBoard();
     drawContext();
     scheduleTextPreview();
@@ -1526,9 +1540,6 @@ function pointerUp(event) {
     return;
   }
   if (drag.kind === "paint" || drag.kind === "move") {
-    if (drag.kind === "move" && state.selection && (drag.dx || drag.dy)) {
-      state.selection = { ...state.selection, x: state.selection.x + (drag.dx ?? 0), y: state.selection.y + (drag.dy ?? 0) };
-    }
     commitDraft();
   } else if (drag.kind === "select" && state.selection) {
     setTool("move");
@@ -2142,7 +2153,7 @@ function bindEvents() {
   });
   els.board.addEventListener("pointermove", pointerMove);
   els.board.addEventListener("pointerup", pointerUp);
-  els.board.addEventListener("pointercancel", () => { state.drag = null; cancelDraft(); drawBoard(); });
+  els.board.addEventListener("pointercancel", () => { cancelDraft(); state.drag = null; state.keyMove = null; drawBoard(); });
   els.board.addEventListener("contextmenu", (event) => event.preventDefault());
   els.board.addEventListener("keydown", boardKeydown);
   els.board.addEventListener("keyup", boardKeyup);
@@ -2220,6 +2231,7 @@ function boardKeydown(event) {
     const moved = draft.move(assetRect(state.keyMove.selection, info.box), state.keyMove.dx, state.keyMove.dy);
     state.keyMove.dx = moved.dx;
     state.keyMove.dy = moved.dy;
+    state.selection = { ...state.keyMove.selection, x: state.keyMove.selection.x + moved.dx, y: state.keyMove.selection.y + moved.dy };
     state.draft = {
       draft,
       path: info.path,
@@ -2241,7 +2253,6 @@ function commitKeyMove() {
   const move = state.keyMove;
   state.keyMove = null;
   if (!move || !state.draft) return;
-  if (move.dx || move.dy) state.selection = { ...move.selection, x: move.selection.x + move.dx, y: move.selection.y + move.dy };
   commitDraft();
 }
 

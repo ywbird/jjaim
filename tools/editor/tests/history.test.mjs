@@ -25,7 +25,7 @@ test("pixel draft applies pencil, eraser, and interpolated lines as one change s
   assert.equal(assets.get("sheet.png").current[0], 0);
 });
 
-test("selection move uses a snapshot, overwrites transparency, and clamps to bounds", () => {
+test("selection move uses a snapshot, overwrites transparency, and trims outside the glyph", () => {
   const { assets, asset } = assetFrom([black, clear, black, black, clear]);
   const draft = new PixelDraft(asset, { x: 0, y: 0, width: 5, height: 1 });
   const moved = draft.move({ x: 0, y: 0, width: 2, height: 1 }, 2, 0);
@@ -33,9 +33,14 @@ test("selection move uses a snapshot, overwrites transparency, and clamps to bou
   const alpha = [0, 1, 2, 3, 4].map((x) => draft.data[x * 4 + 3]);
   assert.deepEqual(alpha.map((a) => (a === 255 ? 1 : 0)), [0, 0, 1, 0, 0]);
 
-  const second = new PixelDraft(asset, { x: 0, y: 0, width: 5, height: 1 });
-  const clamped = second.move({ x: 2, y: 0, width: 2, height: 1 }, 10, 0);
-  assert.deepEqual(clamped, { dx: 1, dy: 0 });
+  const outside = new PixelDraft(asset, { x: 0, y: 0, width: 5, height: 1 });
+  const beyond = outside.move({ x: 2, y: 0, width: 2, height: 1 }, 10, 0);
+  assert.deepEqual(beyond, { dx: 10, dy: 0 });
+  assert.deepEqual([0, 1, 2, 3, 4].map((x) => outside.data[x * 4 + 3]), [255, 0, 0, 0, 0]);
+
+  const partial = new PixelDraft(asset, { x: 0, y: 0, width: 5, height: 1 });
+  partial.move({ x: 0, y: 0, width: 2, height: 1 }, 4, 0);
+  assert.deepEqual([0, 1, 2, 3, 4].map((x) => partial.data[x * 4 + 3]), [0, 0, 255, 255, 255]);
 });
 
 test("history supports undo/redo and preserves abandoned branches", () => {

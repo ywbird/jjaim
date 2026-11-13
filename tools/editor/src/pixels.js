@@ -58,26 +58,29 @@ export class PixelDraft {
   }
 
   move(rect, dx, dy) {
-    const boundedDx = Math.max(this.bounds.x - rect.x, Math.min(this.bounds.x + this.bounds.width - rect.x - rect.width, dx));
-    const boundedDy = Math.max(this.bounds.y - rect.y, Math.min(this.bounds.y + this.bounds.height - rect.y - rect.height, dy));
-    if (boundedDx === 0 && boundedDy === 0) return { dx: 0, dy: 0 };
+    if (dx === 0 && dy === 0) return { dx: 0, dy: 0 };
+    const source = { width: this.asset.width, height: this.asset.height, data: this.data };
     const snapshot = [];
     for (let y = 0; y < rect.height; y += 1) {
       for (let x = 0; x < rect.width; x += 1) {
-        const source = { width: this.asset.width, height: this.asset.height, data: this.data };
-        snapshot.push(pixelAt(source, rect.x + x, rect.y + y));
+        const sx = rect.x + x;
+        const sy = rect.y + y;
+        snapshot.push(inside(this.bounds, sx, sy) ? pixelAt(source, sx, sy) : [0, 0, 0, 0]);
       }
     }
     this.fillRect(rect, ERASER);
-    const image = { width: this.asset.width, height: this.asset.height, data: this.data };
     let cursor = 0;
     for (let y = 0; y < rect.height; y += 1) {
       for (let x = 0; x < rect.width; x += 1) {
-        setPixel(image, rect.x + x + boundedDx, rect.y + y + boundedDy, snapshot[cursor++]);
-        this.touched.add((rect.y + y + boundedDy) * this.asset.width + rect.x + x + boundedDx);
+        const tx = rect.x + x + dx;
+        const ty = rect.y + y + dy;
+        // Moving past the glyph edge trims the outside pixels; the selection
+        // rectangle itself may stay outside so it can be dragged back in.
+        if (inside(this.bounds, tx, ty)) this.set(tx, ty, snapshot[cursor]);
+        cursor += 1;
       }
     }
-    return { dx: boundedDx, dy: boundedDy };
+    return { dx, dy };
   }
 
   changes() {
