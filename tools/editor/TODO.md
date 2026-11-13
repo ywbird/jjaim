@@ -9,6 +9,10 @@
 
 ## 피드백
 
+- [x] 다크모드에서 그리드는 밝은색이어야함 — `c8fb4c2`, browser dark board test
+- [x] 선택 영역 사각형 테두리가 얇음. 좀 더 두껍게 — `c8fb4c2`, 2px+ dashed border
+- [x] 선택을 한 뒤 자동으로 move 모드로 변경 — `c8fb4c2`, browser test
+
 - [x] context row에 직계 글리프 목록 미리보기와 직계 글리프 목록 toggle을 합치기: 글리프 미리보기 자체를 토글로 사용, 미리보기 사각형 좌상단에 글리프로 이동 버튼 — `2f8b4ce`, browser toggle/nav test
     + 직계 글리프 미리보기 목록의 중요도가 커졌으므로, 현재 id=context 만큼 크게, id=context 우측에 나열하는 방식으로.
 
