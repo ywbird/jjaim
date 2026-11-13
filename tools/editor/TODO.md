@@ -9,6 +9,9 @@
 
 ## 피드백
 
+- [x] 그룹 목록 그리드는 우측에 그룹에서 직계 자식 위쪽에 있도록. — `bd17a4a`, DOM order browser test
+- [x] 문구 미리보기를 왼쪽으로 옮기기. — `bd17a4a`, navigator containment test
+
 - [x] 그룹에도 문자 셋과 같은 목록 미리보기 그리드를 추가. — `b3703b2`, group tile browser test
 - [x] 그룹/문자셋 그리드를 접을 수 있게. — `b3703b2`, collapse + reload persistence test
 
