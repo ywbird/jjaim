@@ -647,6 +647,11 @@ dialog::backdrop { background: rgba(16, 20, 26, 0.5); }
 .dialog-header h2 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -0.01em; }
 .dialog-body > h2 { margin: 0 0 8px; font-size: 17px; }
 .dialog-body > p.muted { margin: 0 0 10px; font-size: 12px; }
+.settings-dialog { width: min(440px, 92vw); }
+.settings-field { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+.settings-field > label { color: var(--muted); font-size: 12px; }
+.settings-field > select { width: 100%; }
+.settings-hint { margin: 2px 0 0; color: var(--muted); font-size: 11.5px; line-height: 1.5; }
 
 .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
 .tab { min-height: 36px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; padding: 0 12px; }
@@ -678,6 +683,11 @@ dialog::backdrop { background: rgba(16, 20, 26, 0.5); }
   background: var(--panel);
   image-rendering: auto;
 }
+html[data-antialias="off"] #text-preview { image-rendering: pixelated; }
+html[data-antialias="on"] .char-slot canvas,
+html[data-antialias="on"] .child-chip canvas,
+html[data-antialias="on"] .group-glyph-tile canvas,
+html[data-antialias="on"] #context { image-rendering: auto; }
 .text-preview-hint { margin: 5px 0 0; font-size: 10.5px; color: var(--muted); }
 .text-preview-frame {
   margin-top: 10px;

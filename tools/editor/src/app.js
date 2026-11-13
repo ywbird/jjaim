@@ -79,6 +79,7 @@ const state = {
   drag: null,
   keyMove: null,
   space: false,
+  antialias: true,
   storage: { reading: false, blocked: false, temp: false, readOnly: false, lock: null },
   saveQueue: Promise.resolve(),
   saveToken: 0,
@@ -97,6 +98,11 @@ const els = {
   toggleNav: $("#toggle-nav"),
   toggleInspector: $("#toggle-inspector"),
   langToggle: $("#lang-toggle"),
+  openSettings: $("#open-settings"),
+  settingsDialog: $("#settings-dialog"),
+  settingsClose: $("#settings-close"),
+  settingsLanguage: $("#settings-language"),
+  settingsAntialias: $("#settings-antialias"),
   themeToggle: $("#theme-toggle"),
   fileMenuButton: $("#file-menu-button"),
   fileMenu: $("#file-menu"),
@@ -243,6 +249,24 @@ function icon(name) {
 }
 
 const STATUS_ICONS = { saving: "status-saving", saved: "status-saved", failed: "status-failed", temp: "status-temp", "": "status-idle" };
+const ANTIALIAS_KEY = "declarative-font-editor-antialias";
+
+function applyAntialiasSetting(persist = true) {
+  document.documentElement.dataset.antialias = state.antialias ? "on" : "off";
+  if (els.settingsAntialias) els.settingsAntialias.checked = state.antialias;
+  if (!persist) return;
+  try {
+    localStorage.setItem(ANTIALIAS_KEY, String(state.antialias));
+  } catch {
+    // Preview preference is optional.
+  }
+}
+
+function setAntialias(enabled) {
+  state.antialias = Boolean(enabled);
+  applyAntialiasSetting();
+  if (state.workspace) refreshAll();
+}
 
 function formatDate(timestamp) {
   return new Date(timestamp).toLocaleString(getLanguage() === "ko" ? "ko-KR" : "en-US");
@@ -259,6 +283,7 @@ function applyLanguage() {
   applyStatic();
   els.langToggle.textContent = getLanguage() === "ko" ? "EN" : "한";
   els.langToggle.title = getLanguage() === "ko" ? "Switch to English" : "한국어로 전환";
+  els.settingsLanguage.value = getLanguage();
   if (!state.workspace) {
     renderSetSelect();
     els.characterGrid.replaceChildren(el("div", { class: "muted", text: t("nav.emptySet") }));
@@ -733,14 +758,14 @@ function drawImageToCanvas(canvas, image, zoom, nearest = true, recolor = true) 
   return ctx;
 }
 
-function fitImageToCanvas(canvas, image, box, recolor = true) {
+function fitImageToCanvas(canvas, image, box, recolor = true, smooth = state.antialias) {
   const dpr = globalThis.devicePixelRatio || 1;
   canvas.width = Math.max(1, Math.round(box * dpr));
   canvas.height = Math.max(1, Math.round(box * dpr));
   canvas.style.width = `${box}px`;
   canvas.style.height = `${box}px`;
   const ctx = canvas.getContext("2d");
-  ctx.imageSmoothingEnabled = false;
+  ctx.imageSmoothingEnabled = smooth;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (image.width === 0 || image.height === 0) return ctx;
   const scale = Math.min(box / image.width, box / image.height);
@@ -976,7 +1001,7 @@ function drawContext() {
     if (!state.view.diff) els.contextLabel.textContent = t("context.result", { cp: codepointLabel(currentCodepoint() ?? 0) });
   }
   const zoom = Math.max(1, Math.round(Math.min(10, 220 / Math.max(1, display.width, display.height))));
-  const ctx = drawImageToCanvas(els.context, display, zoom, true, !state.view.diff);
+  const ctx = drawImageToCanvas(els.context, display, zoom, !state.antialias, !state.view.diff);
   if (state.view.onion && state.contextOnion) {
     const dpr = globalThis.devicePixelRatio || 1;
     const tinted = state.contextOnion.data.slice();
@@ -1350,10 +1375,10 @@ function drawTextPreview() {
     const draftRenderer = state.draft?.previewRenderer;
     if (state.draft) state.draft.previewAssets.get(state.draft.path).current = state.draft.draft.data;
     const result = renderText(state.workspace.declaration, draftRenderer ?? state.renderer, els.textInput.value);
-    drawTextCanvas(els.textPreview, result.image, { width: "100%", smooth: true });
+    drawTextCanvas(els.textPreview, result.image, { width: "100%", smooth: state.antialias });
     if (els.textPreviewDialog.open) {
       const zoom = Math.max(1, Math.trunc(Number(state.view.textZoom) || 1));
-      drawTextCanvas(els.textPreviewLarge, result.image, { width: `${result.image.width * zoom}px`, smooth: false });
+      drawTextCanvas(els.textPreviewLarge, result.image, { width: `${result.image.width * zoom}px`, smooth: state.antialias });
       els.textPreviewSize.textContent = `${result.image.width}×${result.image.height} · ${zoom}×`;
     }
     els.textStatus.textContent = result.hasMappings
@@ -1998,6 +2023,17 @@ function bindEvents() {
   els.themeToggle.addEventListener("click", () => {
     applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
   });
+  els.openSettings.addEventListener("click", () => {
+    els.settingsLanguage.value = getLanguage();
+    els.settingsAntialias.checked = state.antialias;
+    els.settingsDialog.showModal();
+  });
+  els.settingsClose.addEventListener("click", () => els.settingsDialog.close());
+  els.settingsLanguage.addEventListener("change", () => {
+    setLanguage(els.settingsLanguage.value);
+    applyLanguage();
+  });
+  els.settingsAntialias.addEventListener("change", () => setAntialias(els.settingsAntialias.checked));
   els.fileMenuButton.addEventListener("click", (event) => {
     event.stopPropagation();
     els.fileMenu.hidden = !els.fileMenu.hidden;
@@ -2392,6 +2428,7 @@ function commitKeyMove() {
 initLanguage();
 els.langToggle.textContent = getLanguage() === "ko" ? "EN" : "한";
 els.langToggle.title = getLanguage() === "ko" ? "Switch to English" : "한국어로 전환";
+els.settingsLanguage.value = getLanguage();
 let initialTheme = "light";
 try {
   initialTheme = localStorage.getItem("declarative-font-editor-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
@@ -2400,6 +2437,14 @@ try {
 }
 applyTheme(initialTheme);
 applyLayout();
+let initialAntialias = true;
+try {
+  initialAntialias = localStorage.getItem(ANTIALIAS_KEY) !== "false";
+} catch {
+  initialAntialias = true;
+}
+state.antialias = initialAntialias;
+applyAntialiasSetting(false);
 
 refreshAllInitial();
 
