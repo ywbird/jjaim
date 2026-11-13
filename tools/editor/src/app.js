@@ -10,6 +10,7 @@ import { History } from "./history.js";
 import { PixelDraft, ERASER, PENCIL, diffSnapshotToAssets } from "./pixels.js";
 import { importImages, manualLink, replaceAssets } from "./importer.js";
 import { exportAll, exportChanged, exportSingle } from "./exporter.js";
+import { exportProject, importProject } from "./project.js";
 import {
   BUILT_IN_SETS,
   characterDisplay,
@@ -97,6 +98,9 @@ const els = {
   fileMenu: $("#file-menu"),
   openDeclaration: $("#open-declaration"),
   emptyOpenDeclaration: $("#empty-open-declaration"),
+  openProject: $("#open-project"),
+  projectFile: $("#project-file"),
+  exportProject: $("#export-project"),
   openWorks: $("#open-works"),
   emptyOpenWorks: $("#empty-open-works"),
   openSources: $("#open-sources"),
@@ -424,6 +428,23 @@ async function restoreLastWorkspace() {
     adoptWorkspace(workspace, { restored: true });
   } catch (error) {
     setStatus(t("status.openFailed", { message: error.message }), "failed");
+  }
+}
+
+async function openProjectFile(file) {
+  try {
+    const project = await importProject(new Uint8Array(await file.arrayBuffer()));
+    const workspace = newWorkspace(project.declaration, project.declarationText, project.fileName);
+    workspace.name = project.name;
+    workspace.assets = project.assets;
+    workspace.history = project.history;
+    workspace.view = project.view;
+    state.workspace = workspace;
+    if (state.storage.lock) state.storage.lock.release();
+    adoptWorkspace(workspace, { restored: true });
+  } catch (error) {
+    setStatus(t("status.projectFailed", { message: error.message }), "failed");
+    els.globalError.textContent = error.message;
   }
 }
 
@@ -1252,6 +1273,7 @@ function refreshAll() {
   els.exportSingle.disabled = !ownInfo()?.ok;
   els.openSources.disabled = !state.workspace;
   els.exportAll.disabled = !state.workspace || state.workspace.assets.paths().length === 0;
+  els.exportProject.disabled = !state.workspace;
   renderSetSelect();
   renderNavigator();
   renderGroupInfo();
@@ -1776,6 +1798,16 @@ async function doExportSingle() {
   }
 }
 
+async function doExportProject() {
+  try {
+    await persist("project");
+    const result = await exportProject(state.workspace);
+    download(result.name, result.bytes);
+  } catch (error) {
+    setStatus(error.message, "failed");
+  }
+}
+
 async function doExportZip(kind) {
   try {
     const result = kind === "changed"
@@ -1840,6 +1872,15 @@ function bindEvents() {
     const file = els.declarationFile.files?.[0];
     els.declarationFile.value = "";
     if (file) await openDeclarationFile(file);
+  });
+  els.openProject.addEventListener("click", () => {
+    els.fileMenu.hidden = true;
+    els.projectFile.click();
+  });
+  els.projectFile.addEventListener("change", async () => {
+    const file = els.projectFile.files?.[0];
+    els.projectFile.value = "";
+    if (file) await openProjectFile(file);
   });
   els.openSources.addEventListener("click", () => {
     els.fileMenu.hidden = true;
@@ -1997,6 +2038,7 @@ function bindEvents() {
   els.exportSingle.addEventListener("click", () => { els.fileMenu.hidden = true; doExportSingle(); });
   els.exportChanged.addEventListener("click", () => { els.fileMenu.hidden = true; doExportZip("changed"); });
   els.exportAll.addEventListener("click", () => { els.fileMenu.hidden = true; doExportZip("all"); });
+  els.exportProject.addEventListener("click", () => { els.fileMenu.hidden = true; doExportProject(); });
 
   els.restoreRevision.addEventListener("click", async () => {
     if (!state.historyPreview || !ensureEditable()) return;

@@ -20,11 +20,13 @@
         <button id="file-menu-button" class="icon-btn" data-i18n-title="menu.title" aria-label="불러오기/내보내기">☰</button>
         <div id="file-menu" class="menu" hidden>
           <button id="open-declaration" class="menu-item" data-i18n="menu.openDeclaration">선언 열기</button>
+          <button id="open-project" class="menu-item" data-i18n="menu.openProject">프로젝트 열기 (.jjaim)</button>
           <button id="open-sources" class="menu-item" data-i18n="menu.sources" disabled>소스 연결</button>
           <hr>
           <button id="export-single" class="menu-item" data-i18n="menu.exportSingle" disabled>선택 PNG</button>
           <button id="export-changed" class="menu-item" data-i18n="menu.exportChanged" disabled>변경 ZIP</button>
           <button id="export-all" class="menu-item" data-i18n="menu.exportAll" disabled>전체 ZIP</button>
+          <button id="export-project" class="menu-item" data-i18n="menu.exportProject" disabled>프로젝트 내보내기 (.jjaim)</button>
         </div>
       </div>
       <button id="toggle-inspector" class="icon-btn" data-i18n-title="inspector.toggle" aria-label="정보 패널">◨</button>
@@ -233,6 +235,7 @@
     </dialog>
 
     <input id="declaration-file" type="file" accept=".json,application/json" hidden>
+    <input id="project-file" type="file" accept=".jjaim,application/zip" hidden>
     <input id="image-file" type="file" multiple accept=".png,.zip" hidden>
     <input id="font-file" type="file" accept=".ttf,.otf,.woff" hidden>
 

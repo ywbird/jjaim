@@ -221,6 +221,12 @@ try {
   assert.equal(await page.$eval('[data-tool="move"]', (node) => node.classList.contains("active")), true);
 
   const head = await page.evaluate(() => window.__editor.state.workspace.history.headId);
+  await page.click("#file-menu-button");
+  await page.click("#export-project");
+  const projectPath = await waitDownload(downloadDir, "Browser.jjaim");
+  const projectZip = await readZip(new Uint8Array(readFileSync(projectPath)), { keepNonPng: true });
+  assert.deepEqual(projectZip.entries.map((entry) => entry.name).sort(), ["project.json", "textures/blank.png", "textures/sheet.png"]);
+
   await page.evaluate(() => window.__editor.state.storage.lock?.release());
   await page.setOfflineMode(false);
   await page.reload({ waitUntil: "networkidle0" });
@@ -284,6 +290,26 @@ try {
   assert.equal(await page.evaluate(() => window.__editor.state.context?.codepoint), 0xac00);
   assert.notEqual(await page.$eval("#context", (canvas) => canvas.toDataURL()), beforeCharContext);
   assert.notEqual(await page.$eval("#board", (canvas) => canvas.toDataURL()), beforeCharBoard);
+
+  const beforeProjectImport = await page.evaluate(() => window.__editor.state.workspace.id);
+  await (await page.$("#project-file")).uploadFile(projectPath);
+  await page.waitForFunction((id) => window.__editor.state.workspace?.id !== id && window.__editor.state.workspace?.fileName === "browser.json", {}, beforeProjectImport);
+  const importedProject = await page.evaluate(() => {
+    const workspace = window.__editor.state.workspace;
+    const asset = workspace.assets.get("sheet.png");
+    return {
+      id: workspace.id,
+      head: workspace.history.headId,
+      revisions: workspace.history.revisions.size,
+      current: [...asset.current],
+      original: [...asset.original],
+    };
+  });
+  assert.notEqual(importedProject.id, beforeProjectImport);
+  assert.equal(importedProject.head, head);
+  assert.equal(importedProject.revisions, 3);
+  assert.deepEqual(importedProject.current, [0, 0, 0, 255, 0, 0, 0, 0]);
+  assert.deepEqual(importedProject.original, [0, 0, 0, 0, 0, 0, 0, 255]);
 
   const directServer = serve(EDITOR_ROOT);
   directServer.listen(0, "127.0.0.1");

@@ -57,6 +57,7 @@ function findEocd(view) {
 
 export async function readZip(bytes, options = {}) {
   const limits = { ...LIMITS, ...options };
+  const keepNonPng = options.keepNonPng === true;
   if (bytes.length > limits.zipBytes) throw new ZipError("ZIP 파일이 256 MiB 한도를 넘습니다");
   if (bytes.length < 22) throw new ZipError("ZIP 파일이 아닙니다");
   const eocd = findEocd(bytes);
@@ -113,7 +114,7 @@ export async function readZip(bytes, options = {}) {
     }
     if (seen.has(normalized)) throw new ZipError(`ZIP 안에 정규화 후 중복된 경로가 있습니다: ${normalized}`);
     seen.add(normalized);
-    if (!/\.png$/i.test(normalized)) {
+    if (!keepNonPng && !/\.png$/i.test(normalized)) {
       skipped.push(normalized);
       offset += 46 + nameLength + extraLength + commentLength;
       continue;
