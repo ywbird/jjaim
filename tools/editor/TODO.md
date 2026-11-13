@@ -9,6 +9,8 @@
 
 ## 피드백
 
+- [x] 밑에 context row 에 미리보기도 편집 보드처럼 항상 선명하게 해야할듯함. 너무 흐려짐. — `1aca766`, context dataURL + pixelated test
+
 - [x] 글꼴 미리보기를 포함해서 비트맵들이 전부 anti aliasing이 꺼져있는 것 같은데, 켤 수 있도록 설정 — `3f3c3be`, settings AA toggle + browser test
 - [x] 설정 팝업을 만들어서 언어랑 anti aliasing toggle을 넣기 — `3f3c3be`, settings dialog + language sync test
 
