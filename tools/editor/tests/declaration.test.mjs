@@ -76,6 +76,51 @@ test("rejects cycles, invalid references, and escaped repeats", () => {
   );
 });
 
+const NO_FINAL_INITIAL = {
+  0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 20: 0,
+  8: 1, 12: 1, 18: 1,
+  13: 2, 17: 2,
+  9: 3, 10: 3, 11: 3, 19: 3,
+  14: 4, 15: 4, 16: 4,
+};
+const WITH_FINAL_INITIAL = {
+  0: 5, 1: 5, 2: 5, 3: 5, 4: 5, 5: 5, 6: 5, 7: 5, 20: 5,
+  8: 6, 12: 6, 13: 6, 17: 6, 18: 6,
+  9: 7, 10: 7, 11: 7, 14: 7, 15: 7, 16: 7, 19: 7,
+};
+const FINAL_BATCH = {
+  0: 0, 2: 0, 9: 0,
+  4: 1, 6: 1, 11: 1, 14: 1, 16: 1, 19: 1, 20: 1,
+  1: 2, 3: 2, 5: 2, 7: 2, 10: 2, 15: 2,
+  8: 3, 12: 3, 13: 3, 17: 3, 18: 3,
+};
+
+function expectedGroups(codepoint) {
+  const index = codepoint - 0xac00;
+  const [lead, rest] = [Math.floor(index / 588), index % 588];
+  const [vowel, tail] = [Math.floor(rest / 28), rest % 28];
+  const names = ["hangul_syllables"];
+  if (tail === 0) {
+    names.push(`initial_${NO_FINAL_INITIAL[vowel]}`, `medial_${lead === 0 || lead === 15 ? 0 : 1}`);
+  } else {
+    names.push(
+      `initial_${WITH_FINAL_INITIAL[vowel]}`,
+      `medial_${lead === 0 || lead === 15 ? 2 : 3}`,
+      `final_${FINAL_BATCH[vowel]}`,
+    );
+  }
+  return names;
+}
+
+test("full hangul example matches an independent 8x4x4 classification", () => {
+  const declaration = parseDeclaration(example("hangul.json"));
+  for (let codepoint = 0xac00; codepoint <= 0xd7a3; codepoint += 1) {
+    const target = declaration.unicodeMap.get(codepoint);
+    assert.deepEqual(target, { group: "hangul_syllables", index: codepoint - 0xac00 });
+    assert.deepEqual(declaration.participating(target.group, target.index), expectedGroups(codepoint), `U+${codepoint.toString(16).toUpperCase()}`);
+  }
+});
+
 test("repeat order is outer axis first and inner index last", () => {
   const declaration = parseDeclaration(
     JSON.stringify({

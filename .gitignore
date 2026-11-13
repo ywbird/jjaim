@@ -1,6 +1,7 @@
 # Local tool state and Python environments
 .nanobot/
 .venv/
+node_modules/
 __pycache__/
 .pytest_cache/
 *.py[cod]
