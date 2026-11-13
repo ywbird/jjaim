@@ -17,7 +17,8 @@
 </p>
 
 <p align="center">
-  <a href="SPEC.md">명세</a> ·
+  <a href="https://ywbird.github.io/jjaim/">명세 해설</a> ·
+  <a href="SPEC.md">명세 원문</a> ·
   <a href="#바로-사용하기">빠른 시작</a> ·
   <a href="examples/">예제</a> ·
   <a href="#도구와-문서">도구와 문서</a>
@@ -81,20 +82,25 @@
 
 ### 브라우저에서 탐색하고 편집하기
 
-프로젝트 루트에서 정적 파일 서버를 엽니다.
+[명세 해설](https://ywbird.github.io/jjaim/)에서 구성 규칙을 읽고, 아래 편집기를 설치 없이 바로 열 수 있습니다.
 
-```sh
-python3 -m http.server 8000
-```
-
-| 도구 | 주소 | 편집 대상 |
+| 도구 | 공개 주소 | 편집 대상 |
 | :--- | :--- | :--- |
-| **픽셀 편집기** | <http://localhost:8000/tools/editor/> | 선언은 그대로 두고 원본 PNG의 픽셀을 편집 |
-| **선언 편집기** | <http://localhost:8000/tools/declaration-editor/> | 그룹 설명·임포트·텍스처 추출 영역 등 선언을 편집 |
+| **픽셀 편집기** | [웹에서 열기](https://ywbird.github.io/jjaim/tools/editor/) | 선언은 그대로 두고 원본 PNG의 픽셀을 편집 |
+| **선언 편집기** | [웹에서 열기](https://ywbird.github.io/jjaim/tools/declaration-editor/) | 그룹 설명·임포트·텍스처 추출 영역 등 선언을 편집 |
 
 선언 JSON과 그 선언이 참조하는 PNG를 직접 불러옵니다. 예를 들어 `examples/hangul.json`에는 `examples/hangul.png`와 `examples/ascii.png`를 연결합니다.
 
-두 편집기는 별도 프로그램입니다. 설치·빌드·CDN·애플리케이션 백엔드 없이 정적 파일로 동작하며, 위 서버는 파일 제공용입니다. Node.js와 npm은 편집기 테스트에만 필요합니다.
+로컬 파일로 실행하려면 프로젝트 루트에서 정적 파일 서버를 엽니다.
+
+```sh
+python3 -m http.server 8000
+# 명세 해설: http://localhost:8000/
+# 픽셀 편집기: http://localhost:8000/tools/editor/
+# 선언 편집기: http://localhost:8000/tools/declaration-editor/
+```
+
+두 편집기는 별도 프로그램입니다. 설치·빌드·CDN·애플리케이션 백엔드 없이 정적 파일로 동작하며, 로컬 서버는 파일 제공용입니다. Node.js와 npm은 편집기 테스트에만 필요합니다.
 
 ### CLI에서 검사하고 PNG로 미리 보기
 
@@ -146,10 +152,17 @@ uv run python ../font_bin_to_png.py ../../examples/ascii.bin
 | 경로 | 내용 |
 | :--- | :--- |
 | **[`SPEC.md`](SPEC.md)** | 그룹·텍스처·임포트·반복·유니코드 규칙의 정본 |
+| [`index.html`](index.html) | 도식·코드 예제로 읽는 명세 해설 · [공개 페이지](https://ywbird.github.io/jjaim/) |
 | [`tools/inspector/`](tools/inspector/) | 선언 검증·조회·PNG 미리보기 CLI · [사용법](tools/inspector/README.md) / [도구 명세](tools/inspector/SPEC.md) |
 | [`tools/editor/`](tools/editor/) | 원본 PNG 픽셀 편집기 · [사용법](tools/editor/README.md) / [도구 명세](tools/editor/SPEC.md) |
 | [`tools/declaration-editor/`](tools/declaration-editor/) | 그룹 선언 편집기 · [사용법](tools/declaration-editor/README.md) |
-| [`docs/`](docs/) | 8×4×4벌 참고 문서·이전 명세 백업·README 이미지 |
+| [`docs/`](docs/) | 명세 해설 자산·테스트·8×4×4벌 참고 문서·이전 명세 백업·README 이미지 |
+
+### GitHub Pages
+
+공개 주소는 <https://ywbird.github.io/jjaim/>입니다. 저장소 루트의 `index.html`이 명세 해설의 진입점이며, 두 편집기는 각 `tools/` 경로에서 열립니다.
+
+루트의 `.nojekyll`은 별도의 Jekyll 변환 없이 정적 파일을 그대로 배포하기 위한 설정입니다. 이미지·CSS·JavaScript·편집기 링크는 상대 경로를 사용하므로 GitHub Pages의 `/jjaim/` 하위 경로와 로컬 서버에서 같은 파일로 동작합니다. 명세와 사용법 원문은 웹 해설에서 GitHub의 Markdown 문서로 연결합니다.
 
 ## 현재 범위
 

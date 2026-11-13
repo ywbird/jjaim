@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="ko" data-type="software" data-motion="none">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JJaim 명세 해설 — 선언으로 글리프 짜기</title>
+  <meta name="description" content="JJaim Draft v0.3의 그룹, 텍스처 추출, 인덱스 배치, 중첩 반복과 유니코드 매핑을 도식과 예제로 설명합니다.">
+  <meta name="page-type" content="software">
+  <meta name="site-kind" content="software">
+  <meta name="theme-color" content="#f7f5f0">
+  <meta property="og:title" content="JJaim — 선언으로 글리프 짜기">
+  <meta property="og:description" content="부품을 가져오고, 배치하고, 문자에 연결하는 규칙. Draft v0.3 한국어 해설.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ywbird.github.io/jjaim/">
+  <meta property="og:image" content="https://ywbird.github.io/jjaim/docs/assets/jjaim-banner.svg">
+  <link rel="canonical" href="https://ywbird.github.io/jjaim/">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="docs/assets/guide-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="docs/assets/guide.css">
+  <script type="module" src="docs/assets/guide.mjs"></script>
+</head>
+<body id="top">
+  <!-- Technical editorial guide. design-taste-frontend: restrained type, one ink/paper
+       system, real glyph assets, equal edges. The user's no-motion brief overrides
+       the kit's entrance, hover-motion, effect and full-screen marketing recipes. -->
+  <a class="skip-link" href="#content">본문으로 건너뛰기</a>
+  <header class="site-header">
+    <div class="frame header-inner">
+      <a class="wordmark" href="#top" aria-label="JJaim 짜임, 문서 처음으로">JJaim<span>짜임</span></a>
+      <span class="header-label">선언형 글리프 구성 명세</span>
+      <nav class="header-links" aria-label="프로젝트 링크">
+        <a href="https://github.com/ywbird/jjaim/blob/main/SPEC.md">명세 원문 <span aria-hidden="true">↗</span></a>
+        <a href="https://github.com/ywbird/jjaim">GitHub <span aria-hidden="true">↗</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="frame guide-layout">
+    <aside class="contents-rail">
+      <nav class="contents" aria-label="명세 해설 목차">
+        <p class="rail-label">명세 해설 <span>v0.3</span></p>
+        <ol>
+          <li><a href="#overview"><span>00</span> 읽기 전에</a></li>
+          <li><a href="#structure"><span>01</span> 선언의 구조</a></li>
+          <li><a href="#textures"><span>02</span> 텍스처와 좌표</a></li>
+          <li><a href="#placement"><span>03</span> 가져오기와 배치</a></li>
+          <li><a href="#repeat"><span>04</span> 중첩 반복</a></li>
+          <li><a href="#layers"><span>05</span> 레이어와 클리핑</a></li>
+          <li><a href="#unicode"><span>06</span> 유니코드 매핑</a></li>
+          <li><a href="#hangul"><span>07</span> 한글 조합 예제</a></li>
+          <li><a href="#validation"><span>08</span> 유효성 검사</a></li>
+          <li><a href="#boundaries"><span>09</span> 명세의 경계</a></li>
+          <li><a href="#tools"><span>10</span> 파일과 도구</a></li>
+        </ol>
+        <div class="rail-note">
+          <span class="draft-dot" aria-hidden="true"></span>
+          <p>기준 문서 <a href="https://github.com/ywbird/jjaim/blob/main/SPEC.md">SPEC.md</a><br>Draft v0.3</p>
+        </div>
+      </nav>
+    </aside>
+
+    <main id="content" class="document">
+      <details class="mobile-contents">
+        <summary>명세 해설 목차 <span>00—10</span></summary>
+        <nav aria-label="모바일 목차">
+          <a href="#overview">00 읽기 전에</a>
+          <a href="#structure">01 선언의 구조</a>
+          <a href="#textures">02 텍스처와 좌표</a>
+          <a href="#placement">03 가져오기와 배치</a>
+          <a href="#repeat">04 중첩 반복</a>
+          <a href="#layers">05 레이어와 클리핑</a>
+          <a href="#unicode">06 유니코드 매핑</a>
+          <a href="#hangul">07 한글 조합 예제</a>
+          <a href="#validation">08 유효성 검사</a>
+          <a href="#boundaries">09 명세의 경계</a>
+          <a href="#tools">10 파일과 도구</a>
+        </nav>
+      </details>
+
+      <section id="overview" class="intro" aria-labelledby="intro-title">
+        <div class="document-meta"><span>JJaim 명세 해설</span><span class="mono">Draft v0.3</span></div>
+        <h1 id="intro-title">글리프를 짜는<br>선언의 규칙.</h1>
+        <p class="intro-lead">부품을 어디서 꺼내고, 어느 글리프에 놓고,<br class="desktop-break"> 어떤 문자로 연결할지 기술합니다.</p>
+        <p class="intro-copy">JJaim은 텍스처와 재사용 가능한 그룹으로 글리프를 구성하는 명세입니다. 한글은 그 활용 예 중 하나입니다. 함께 제공하는 예제는 <strong>344개 부품으로 한글 11,172자</strong>를 구성합니다.</p>
+
+        <div class="composition" role="img" aria-label="실제 한글 예제의 각: initial_5의 0번 초성, medial_2의 0번 중성, final_0의 0번 종성을 같은 위치에 겹쳐 hangul_syllables의 1번 글리프를 구성하고 U+AC01에 연결합니다.">
+          <div class="diagram-bar"><span>각 <span class="muted">/ 실제 예제의 레이어 구성</span></span><span class="mono">16 × 16</span></div>
+          <div class="composition-body">
+            <div class="component-set">
+              <div class="component"><span>초성</span><div class="pixel-ground"><img src="docs/assets/guide-initial.png" width="16" height="16" alt="" fetchpriority="high"></div><code>initial_5[0]</code></div>
+              <span class="combine-sign" aria-hidden="true">+</span>
+              <div class="component"><span>중성</span><div class="pixel-ground"><img src="docs/assets/guide-medial.png" width="16" height="16" alt=""></div><code>medial_2[0]</code></div>
+              <span class="combine-sign" aria-hidden="true">+</span>
+              <div class="component"><span>종성</span><div class="pixel-ground"><img src="docs/assets/guide-final.png" width="16" height="16" alt=""></div><code>final_0[0]</code></div>
+            </div>
+            <div class="composition-result"><span>합성한 글리프</span><div class="pixel-ground result-ground"><img src="docs/assets/guide-composed.png" width="16" height="16" alt=""></div><code>U+AC01 <span>각</span></code></div>
+          </div>
+          <div class="diagram-foot"><code>offset: [0, 0]</code><span>같은 좌표에 놓아도, 각 부품은 별도 레이어입니다.</span></div>
+        </div>
+
+        <div class="reading-note"><p>이 페이지는 <a href="https://github.com/ywbird/jjaim/blob/main/SPEC.md">SPEC.md</a>의 한국어 해설입니다. 의미의 기준은 원문이며, 현재 도구는 JSON을 읽지만 명세의 최종 저장 형식은 아직 정해지지 않았습니다. 원문 7절의 YAML도 설명용 표기입니다.</p></div>
+      </section>
+
+      <section id="structure" class="chapter" aria-labelledby="structure-title">
+        <div class="chapter-heading"><span class="chapter-number">01</span><h2 id="structure-title">선언의 구조</h2><a class="source-link" href="https://github.com/ywbird/jjaim/blob/main/SPEC.md#1-scope-and-data-hierarchy">원문 §1–2 <span aria-hidden="true">↗</span></a></div>
+        <p class="chapter-lead">이미지의 이름을 등록하고, 그룹에서 글리프를 정의합니다. 그룹을 가져올 때는 복사본이 아니라 이름을 참조합니다.</p>
+        <div class="structure-layout">
+          <div class="declaration-tree" aria-label="선언 데이터의 계층">
+            <div class="tree-root">glyph definition</div>
+            <ul>
+              <li><code>metadata</code><span>선언 전체의 설명</span></li>
+              <li><code>texture_sets</code><span>셋 이름 → 소스 이름 → 이미지 경로</span></li>
+              <li><code>groups</code>
+                <ul>
+                  <li><code>description</code></li>
+                  <li><code>size / count</code></li>
+                  <li><code>texture</code></li>
+                  <li><code>imports → at → repeat</code></li>
+                  <li><code>unicode</code></li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+          <dl class="definition-list">
+            <div><dt><code>metadata</code></dt><dd>선택 사항입니다. <code>name</code>, <code>version</code>, <code>author</code>는 문자열이고, 추가 설명 필드도 둘 수 있습니다. 여기의 버전은 명세가 아닌 <em>해당 선언</em>의 버전입니다.</dd></div>
+            <div><dt><code>texture_sets</code></dt><dd>셋마다 소스 이름과 이미지 경로를 연결하는 레지스트리입니다. 소스 이름은 셋 안에서 구분합니다. 셀 크기·추출 위치·패킹·합성 방식은 여기에 넣지 않습니다.</dd></div>
+            <div><dt><code>groups</code></dt><dd>이름을 가진 글리프 묶음입니다. 각 그룹이 크기, 개수, 추출 설정, 가져오기, 문자 매핑을 소유합니다. <code>description</code>은 설명일 뿐 구성에는 영향을 주지 않습니다.</dd></div>
+          </dl>
+        </div>
+        <p>한 그룹을 여러 곳에서 참조할 수 있지만, 참조가 순환해서는 안 됩니다. 원문의 ADH 언급은 데이터 계층을 설명하기 위한 비유입니다. 항공 분야 스키마를 따르거나 설치할 필요는 없습니다.</p>
+      </section>
+
+      <section id="textures" class="chapter" aria-labelledby="textures-title">
+        <div class="chapter-heading"><span class="chapter-number">02</span><h2 id="textures-title">텍스처와 좌표</h2><a class="source-link" href="https://github.com/ywbird/jjaim/blob/main/SPEC.md#2-coordinates-and-groups">원문 §2 <span aria-hidden="true">↗</span></a></div>
+        <p class="chapter-lead">그룹의 <code>size</code>는 글리프 한 개의 크기이고, <code>count</code>는 글리프의 개수입니다.</p>
+        <div class="coordinate-strip">
+          <div><span>크기</span><code>size: [8, 8]</code><p>너비·높이 모두 양의 정수</p></div>
+          <div><span>개수</span><code>count: 6</code><p>유효 인덱스는 0부터 5까지</p></div>
+          <div><span>로컬 원점</span><code>(0, 0)</code><p>왼쪽 위. x는 오른쪽, y는 아래쪽</p></div>
+        </div>
+        <p>모든 좌표·크기·오프셋은 같은 논리 픽셀 단위의 정수입니다. 로컬 경계는 <code>[0, w) × [0, h)</code>입니다. 텍스처가 없는 그룹은 빈 이미지에서 시작하며, 다른 그룹을 가져와 구성할 수 있습니다. 모든 그룹에 텍스처가 없다면 <code>texture_sets</code>도 생략할 수 있습니다.</p>
+        <div class="example-split">
+          <div class="code-block"><div class="code-heading"><span>그룹의 texture 필드</span><button type="button" class="copy-button" data-copy="texture-code" hidden>코드 복사</button></div><pre tabindex="0" aria-label="텍스처 추출 설정 JSON"><code id="texture-code">{
+  "set": "main",
+  "source": "sheet",
+  "start": [0, 0],
+  "direction": "right"
+}</code></pre></div>
+          <div class="extraction-diagram">
+            <p class="diagram-label">8 × 8 셀을 오른쪽으로 추출</p>
+            <div class="cell-strip" aria-label="글리프 0에서 5까지, x 좌표는 0, 8, 16, 24, 32, 40"><span>0<small>x = 0</small></span><span>1<small>8</small></span><span>2<small>16</small></span><span>3<small>24</small></span><span>4<small>32</small></span><span>5<small>40</small></span></div>
+            <div class="formula"><code>시작점(i) = start + i × step</code></div>
+            <p>각 사각형의 왼쪽 위가 추출한 글리프의 로컬 원점이 됩니다. 이미지 끝에서 다음 행으로 자동 이동하지 않습니다.</p>
+          </div>
+        </div>
+        <div class="table-scroll" role="region" aria-label="추출 방향과 간격" tabindex="0"><table><thead><tr><th scope="col">방향</th><th scope="col">step</th><th scope="col">이동</th></tr></thead><tbody><tr><th scope="row"><code>right</code></th><td><code>(w, 0)</code></td><td>오른쪽으로 너비만큼</td></tr><tr><th scope="row"><code>left</code></th><td><code>(−w, 0)</code></td><td>왼쪽으로 너비만큼</td></tr><tr><th scope="row"><code>down</code></th><td><code>(0, h)</code></td><td>아래로 높이만큼</td></tr><tr><th scope="row"><code>up</code></th><td><code>(0, −h)</code></td><td>위로 높이만큼</td></tr></tbody></table></div>
+        <p class="small-note">네 방향은 현재의 잠정 권장안입니다. 참조하는 추출 사각형이 이미지 밖으로 나가면 오류이고, 등록만 한 미사용 이미지는 열 필요가 없습니다. 글리프마다 크기·위치가 다른 불규칙 패킹은 미결 사항입니다.</p>
+      </section>
+
+      <section id="placement" class="chapter" aria-labelledby="placement-title">
+        <div class="chapter-heading"><span class="chapter-number">03</span><h2 id="placement-title">가져오기와 배치</h2><a class="source-link" href="https://github.com/ywbird/jjaim/blob/main/SPEC.md#3-imports-and-indexed-placement">원문 §3 <span aria-hidden="true">↗</span></a></div>
+        <p class="chapter-lead"><code>at</code>은 글리프의 인덱스를 고르고, <code>offset</code>은 그 글리프의 픽셀을 옮깁니다.</p>
+        <p><code>B</code>에 8 × 8 글리프 6개, <code>A</code>에 10 × 8 글리프 10개가 있다고 합시다. 아래는 <code>A</code>의 임포트 한 개입니다.</p>
+        <div class="example-split">
+          <div class="code-block"><div class="code-heading"><span>A.imports의 한 항목</span><button type="button" class="copy-button" data-copy="placement-code" hidden>코드 복사</button></div><pre tabindex="0" aria-label="임포트 배치 규칙 JSON"><code id="placement-code">{
+  "group": "B",
+  "offset": [1, 0],
+  "at": [
+    {"from": [0, 3], "to": 5}
+  ]
+}</code></pre></div>
+          <div class="placement-map">
+            <div class="map-label"><span>가져올 부품</span><span>배치할 대상</span></div>
+            <div><code>B[0]</code><span aria-hidden="true">→</span><code>A[5]</code></div>
+            <div><code>B[1]</code><span aria-hidden="true">→</span><code>A[6]</code></div>
+            <div><code>B[2]</code><span aria-hidden="true">→</span><code>A[7]</code></div>
+            <p>각 부품을 대상의 로컬 좌표 <code>(1, 0)</code>에 놓습니다.</p>
+          </div>
+        </div>
+        <div class="key-rule"><span>끝은 포함하지 않습니다.</span><p><code>from: [0, 3]</code>은 0·1·2번입니다. 일반적으로 <code>0 ≤ j &lt; b − a</code>일 때, <code>source[a + j]</code>를 <code>target[t + j]</code>로 가져옵니다.</p></div>
+        <p><code>imports</code>와 그 안의 <code>at</code>은 순서가 있는 목록입니다. 같은 <code>B</code>를 다른 오프셋으로 다시 가져와도 됩니다. 여러 규칙이 같은 대상 인덱스에 도착하면 이전 결과를 덮어쓰지 않고, 그 위에 <strong>별도 레이어</strong>로 놓입니다.</p>
+      </section>
+
+      <section id="repeat" class="chapter" aria-labelledby="repeat-title">
+        <div class="chapter-heading"><span class="chapter-number">04</span><h2 id="repeat-title">중첩 반복</h2><a class="source-link" href="https://github.com/ywbird/jjaim/blob/main/SPEC.md#3-imports-and-indexed-placement">원문 §3 · §7 <span aria-hidden="true">↗</span></a></div>
+        <p class="chapter-lead">같은 배치를 여러 번 펼칩니다. 반복 축을 겹치면 여러 인덱스 차원의 곱을 표현할 수 있습니다.</p>
+        <p><code>repeat</code>는 축의 목록입니다. 첫 축이 바깥쪽, 마지막 축이 안쪽 반복입니다. 각 축의 <code>count</code>는 양의 정수이며, <code>from_stride</code>의 기본값은 0, <code>to_stride</code>의 기본값은 가져오는 구간 길이 <code>b − a</code>입니다. 생략하면 <code>[]</code>과 같고, 축 하나도 목록으로 씁니다.</p>
+        <div class="formula-board" aria-label="반복 배치 공식">
+          <div><span>가져올 인덱스</span><code>a + j + Σ(kₘ × from_strideₘ)</code></div>
+          <div><span>배치할 인덱스</span><code>t + j + Σ(kₘ × to_strideₘ)</code></div>
+          <p><code>0 ≤ j &lt; b − a</code> · 각 축에서 <code>0 ≤ kₘ &lt; countₘ</code></p>
+        </div>
+        <h3>3개씩, 두 축으로 반복하기</h3>
+        <p>원문 <code>Grid</code> 예제의 <code>at</code> 규칙입니다. 소스 <code>B</code>는 6개, 대상 <code>Grid</code>는 12개 글리프를 가집니다.</p>
+        <div class="code-block"><div class="code-heading"><span>Grid의 at 규칙</span><button type="button" class="copy-button" data-copy="repeat-code" hidden>코드 복사</button></div><pre tabindex="0" aria-label="중첩 반복 규칙 JSON"><code id="repeat-code">{
+  "from": [0, 3],
+  "to": 0,
+  "repeat": [
+    {"count": 2, "from_stride": 3, "to_stride": 6},
+    {"count": 2, "from_stride": 0, "to_stride": 3}
+  ]
+}</code></pre></div>
+        <div class="repeat-example">
+          <div class="repeat-heading"><span>반복을 펼친 순서</span><span class="mono">k₀ → k₁ → j</span></div>
+          <ol class="repeat-rows">
+            <li data-repeat-row="0"><span class="axis-pair"><span class="repeat-order">01</span><code>k₀=0, k₁=0</code></span><code>B[0..2]</code><span class="mapping-arrow" aria-hidden="true">→</span><code>Grid[0..2]</code><button type="button" data-repeat-block="0" aria-pressed="true" hidden>1번 배치 보기</button></li>
+            <li data-repeat-row="1"><span class="axis-pair"><span class="repeat-order">02</span><code>k₀=0, k₁=1</code></span><code>B[0..2]</code><span class="mapping-arrow" aria-hidden="true">→</span><code>Grid[3..5]</code><button type="button" data-repeat-block="1" aria-pressed="false" hidden>2번 배치 보기</button></li>
+            <li data-repeat-row="2"><span class="axis-pair"><span class="repeat-order">03</span><code>k₀=1, k₁=0</code></span><code>B[3..5]</code><span class="mapping-arrow" aria-hidden="true">→</span><code>Grid[6..8]</code><button type="button" data-repeat-block="2" aria-pressed="false" hidden>3번 배치 보기</button></li>
+            <li data-repeat-row="3"><span class="axis-pair"><span class="repeat-order">04</span><code>k₀=1, k₁=1</code></span><code>B[3..5]</code><span class="mapping-arrow" aria-hidden="true">→</span><code>Grid[9..11]</code><button type="button" data-repeat-block="3" aria-pressed="false" hidden>4번 배치 보기</button></li>
+          </ol>
+          <div class="repeat-detail" id="repeat-detail" hidden><span>선택한 배치의 인덱스</span><output id="repeat-output" aria-live="polite">B[0] → Grid[0] · B[1] → Grid[1] · B[2] → Grid[2]</output></div>
+        </div>
+        <p>안쪽 축은 같은 부품을 다른 대상에 반복합니다. 바깥쪽 축은 다음 부품 묶음으로 넘어갑니다. 펼친 뒤의 소스·대상 인덱스는 모두 각 그룹의 범위 안이어야 합니다. 음수 stride도 가능하지만 범위를 벗어나서는 안 됩니다.</p>
+      </section>
+
+      <section id="layers" class="chapter" aria-labelledby="layers-title">
+        <div class="chapter-heading"><span class="chapter-number">05</span><h2 id="layers-title">레이어와 클리핑</h2><a class="source-link" href="https://github.com/ywbird/jjaim/blob/main/SPEC.md#3-imports-and-indexed-placement">원문 §3 · §5 <span aria-hidden="true">↗</span></a></div>
+        <p class="chapter-lead">자기 텍스처가 첫 레이어입니다. 가져온 레이어는 선언 순서대로 그 뒤에 놓입니다.</p>
+        <div class="layer-layout">
+          <ol class="layer-order"><li><span>1</span><div><strong>자기 텍스처</strong><p>있다면 먼저 놓습니다.</p></div></li><li><span>2</span><div><strong>첫 번째 import</strong><p><code>at</code> 규칙과 반복 인덱스 순서를 따릅니다.</p></div></li><li><span>3</span><div><strong>다음 import</strong><p>같은 대상을 참조해도 독립된 레이어입니다.</p></div></li></ol>
+          <div class="clip-diagram" role="img" aria-label="원본 그룹 크기로 먼저 자르고, 오프셋을 적용한 뒤 대상 그룹 크기로 다시 자릅니다. 중첩 부모마다 이 과정을 반복합니다.">
+            <div><span class="clip-step">01</span><strong>소스 경계로 자르기</strong><code>[0, wₛ) × [0, hₛ)</code></div><span class="clip-arrow" aria-hidden="true">↓</span><div><span class="clip-step">02</span><strong>오프셋 적용하기</strong><code>(dx, dy)</code></div><span class="clip-arrow" aria-hidden="true">↓</span><div><span class="clip-step">03</span><strong>대상 경계로 자르기</strong><code>[0, wₜ) × [0, hₜ)</code></div>
+          </div>
+        </div>
+        <div class="key-rule"><span>중간 경계도 남아 있습니다.</span><p><code>C → B → A</code>라면 C·B·A의 경계를 각각 적용합니다. B에서 잘린 픽셀은 A의 오프셋이 되돌아오더라도 복구되지 않습니다. 최종 오프셋만 더해 평탄화하면 이 의미를 잃을 수 있습니다.</p></div>
+        <p>여기까지가 명세가 정하는 구조입니다. 겹친 픽셀을 알파 합성할지, 마스크로 결합할지, 색·샘플링을 어떻게 처리할지는 렌더러가 문서화할 정책입니다. 서로 다른 렌더러의 최종 픽셀이 반드시 같아야 하는 것은 아닙니다.</p>
+      </section>
+
+      <section id="unicode" class="chapter" aria-labelledby="unicode-title">
+        <div class="chapter-heading"><span class="chapter-number">06</span><h2 id="unicode-title">유니코드 매핑</h2><a class="source-link" href="https://github.com/ywbird/jjaim/blob/main/SPEC.md#4-unicode-mappings">원문 §4 <span aria-hidden="true">↗</span></a></div>
+        <p class="chapter-lead">글리프를 구성하는 일과, 그 글리프에 문자를 연결하는 일은 별개입니다.</p>
+        <div class="example-split">
+          <div class="code-block"><div class="code-heading"><span>그룹의 unicode 필드</span><button type="button" class="copy-button" data-copy="unicode-code" hidden>코드 복사</button></div><pre tabindex="0" aria-label="유니코드 매핑 JSON"><code id="unicode-code">[
+  {"from": [0, 3], "to": "U+AC00"}
+]</code></pre></div>
+          <div class="unicode-map"><div><code>G[0]</code><span>→</span><code>U+AC00</code><strong>가</strong></div><div><code>G[1]</code><span>→</span><code>U+AC01</code><strong>각</strong></div><div><code>G[2]</code><span>→</span><code>U+AC02</code><strong>갂</strong></div></div>
+        </div>
+        <ul class="prose-list">
+          <li><strong>매핑은 선택 사항입니다.</strong> 매핑이 없는 그룹도 다른 그룹의 부품으로 쓸 수 있습니다. 매핑한 글리프만 내보내기 후보가 됩니다.</li>
+          <li><strong>임포트가 문자 매핑을 물려받지는 않습니다.</strong> 가져온 부품이 어떤 문자에 연결되어 있어도, 대상 그룹의 매핑은 따로 선언합니다.</li>
+          <li><strong>다른 글리프가 같은 코드 포인트를 차지하면 오류입니다.</strong> 반대로 같은 그룹의 같은 글리프를 여러 코드 포인트에 연결하는 별칭은 허용됩니다.</li>
+          <li><strong>유니코드 스칼라 값만 허용합니다.</strong> <code>U+0000</code>부터 <code>U+10FFFF</code>까지 중 서로게이트 구간 <code>U+D800–U+DFFF</code>는 제외합니다. 범위 전체가 이 조건을 만족해야 합니다.</li>
+        </ul>
+        <p class="small-note">오른쪽 표는 인덱스와 코드 포인트의 연결을 보여 줍니다. 매핑 자체가 가·각·갂의 모양을 만들어 주지는 않습니다. 보이는 이미지가 없는 공백 글리프도 유효합니다.</p>
+      </section>
+
+      <section id="hangul" class="chapter" aria-labelledby="hangul-title">
+        <div class="chapter-heading"><span class="chapter-number">07</span><h2 id="hangul-title">한글 조합 예제</h2><a class="source-link" href="https://github.com/ywbird/jjaim/blob/main/SPEC.md#71-full-scale-example-8--4--4-form-hangul">원문 §7.1 <span aria-hidden="true">↗</span></a></div>
+        <p class="chapter-lead">8 × 4 × 4벌은 글자의 개수가 아니라, 문맥에 따라 고르는 자모 모양의 벌 수입니다.</p>
+        <div class="hangul-layout">
+          <div class="atlas-panel"><div class="diagram-bar"><a href="examples/hangul.png">hangul.png <span aria-hidden="true">↗</span></a><span class="mono">432 × 256 px</span></div><div class="atlas-image"><img src="examples/hangul.png" width="432" height="256" alt="8벌의 초성, 4벌의 중성, 4벌의 종성을 16×16 셀에 배치한 실제 한글 부품 텍스처" loading="lazy"></div></div>
+          <dl class="component-counts"><div><dt>초성</dt><dd><strong>8 × 19</strong><span>152개</span></dd></div><div><dt>중성</dt><dd><strong>4 × 21</strong><span>84개</span></dd></div><div><dt>종성</dt><dd><strong>4 × 27</strong><span>108개</span></dd></div><div class="counts-total"><dt>전체 부품</dt><dd><strong>344개</strong></dd></div></dl>
+        </div>
+        <p>셀 하나는 16 × 16 픽셀이고, 27열 × 16행으로 놓여 있습니다. 각 벌의 예약된 첫 빈 셀은 제외되어 있으며, 오른쪽의 남는 셀은 참조하지 않습니다. 받침이 없는 경우에는 종성 부품을 가져오지 않습니다.</p>
+        <h3>문자 순서를 인덱스 식으로 표현하기</h3>
+        <div class="hangul-formula"><code>i = 588L + 28V + T</code><span>코드 포인트 = U+AC00 + i</span></div>
+        <div class="table-scroll" role="region" aria-label="한글 조합 인덱스" tabindex="0"><table><thead><tr><th scope="col">인덱스</th><th scope="col">범위</th><th scope="col">뜻</th><th scope="col">to_stride</th></tr></thead><tbody><tr><th scope="row"><code>L</code></th><td><code>[0, 19)</code></td><td>유니코드 초성 순서</td><td><code>588</code></td></tr><tr><th scope="row"><code>V</code></th><td><code>[0, 21)</code></td><td>유니코드 중성 순서</td><td><code>28</code></td></tr><tr><th scope="row"><code>T</code></th><td><code>[0, 28)</code></td><td>종성 순서. 0은 받침 없음</td><td><code>1</code></td></tr></tbody></table></div>
+        <p>예를 들어 <code>가</code>는 <code>(L,V,T) = (0,0,0)</code>, 인덱스 0입니다. <code>각</code>은 <code>(0,0,1)</code>, 인덱스 1입니다. 19 × 21 × 28 = <strong>11,172자</strong>를 <code>U+AC00–U+D7A3</code>에 연결합니다.</p>
+        <p>초성은 중성 모양과 받침 유무에 따라 무받침 5벌·유받침 3벌 중 하나를 고릅니다. 중성 4벌은 초성이 ㄱ·ㅋ인지, 받침이 있는지에 따라 고릅니다. 종성 4벌은 중성에 따라 고릅니다. 이 선택은 <code>imports</code>와 중첩 <code>repeat</code>로 표현되어 있으며, 렌더러에 한글 조합을 하드코딩하지 않습니다.</p>
+        <div class="example-summary"><img src="docs/assets/guide-sample.png" width="64" height="32" alt="실제 예제 텍스처로 합성한 짜임" loading="lazy"><p><a href="examples/hangul.json">hangul.json</a>은 한글에 ASCII 95자를 더해 <strong>11,267자</strong>를 매핑합니다. <a href="examples/ascii.json">ascii.json</a>은 ASCII만 있는 별도 예제입니다. ASCII는 8 × 16 셀의 텍스처를 행별로 나눕니다. 추출 방향이 다음 행으로 자동 줄바꿈하지 않기 때문입니다.</p></div>
+        <p class="small-note">이 예제는 <a href="docs/about_8x4x4.txt">8×4×4벌 참고 문서</a>의 모양 구분을 유니코드 순서에 맞춘 것입니다. 옛 조합형 코드의 인코딩·예약 셀·C 배열 오프셋을 그대로 재현한 것은 아닙니다.</p>
+      </section>
+
+      <section id="validation" class="chapter" aria-labelledby="validation-title">
+        <div class="chapter-heading"><span class="chapter-number">08</span><h2 id="validation-title">유효성 검사</h2><a class="source-link" href="https://github.com/ywbird/jjaim/blob/main/SPEC.md#6-validity-and-validation">원문 §6 <span aria-hidden="true">↗</span></a></div>
+        <p class="chapter-lead">선언만으로 알 수 있는 오류와, 이미지 크기를 알아야 검사할 수 있는 오류를 구분합니다.</p>
+        <div class="table-scroll" role="region" aria-label="선언 유효성 검사 항목" tabindex="0"><table class="validation-table"><thead><tr><th scope="col">검사 대상</th><th scope="col">유효한 조건</th><th scope="col">오류의 예</th></tr></thead><tbody>
+          <tr><th scope="row">설명 필드</th><td><code>metadata</code>는 매핑, 이름·버전·저자는 문자열. 그룹 설명도 문자열</td><td><code>"version": 3</code></td></tr>
+          <tr><th scope="row">이름과 경로</th><td>그룹 이름은 고유. 셋 이름과 셋 내부 소스 이름은 비어 있지 않고 고유. 경로는 비어 있지 않은 문자열</td><td>같은 셋에 동일한 소스 이름 두 번 등록</td></tr>
+          <tr><th scope="row">참조</th><td>모든 그룹·셋·소스가 존재하고 그룹 참조에 순환이 없음</td><td><code>A → B → A</code></td></tr>
+          <tr><th scope="row">크기와 개수</th><td><code>size</code>의 두 값과 그룹 <code>count</code>가 양의 정수</td><td><code>"size": [0, 16]</code></td></tr>
+          <tr><th scope="row">배치와 반복</th><td><code>0 ≤ a &lt; b</code>, 축의 count는 양의 정수. 펼친 모든 인덱스가 범위 안</td><td>count가 6인 소스에서 6번 가져오기</td></tr>
+          <tr><th scope="row">텍스처 추출</th><td>이미지 크기를 알면 참조하는 추출 사각형이 이미지 안에 있어야 함</td><td>너비 32인 이미지에서 x=32부터 8픽셀 추출</td></tr>
+          <tr><th scope="row">문자 매핑</th><td>그룹 인덱스·스칼라 값 범위 안. 다른 글리프 간 코드 포인트 충돌 없음</td><td>서로 다른 글리프에 <code>U+AC00</code> 중복 배정</td></tr>
+        </tbody></table></div>
+        <p>빈 이미지나 유니코드 매핑이 없는 그룹은 오류가 아닙니다. 이미지가 아직 로드되지 않았더라도 선언된 셋·소스 이름의 참조는 유효해야 합니다. 경로는 이미지 자원을 가리키는 값이지 참조 이름이 아닙니다.</p>
+      </section>
+
+      <section id="boundaries" class="chapter" aria-labelledby="boundaries-title">
+        <div class="chapter-heading"><span class="chapter-number">09</span><h2 id="boundaries-title">명세의 경계</h2><a class="source-link" href="https://github.com/ywbird/jjaim/blob/main/SPEC.md#5-interpretation-and-renderer-responsibilities">원문 §5 · §8 <span aria-hidden="true">↗</span></a></div>
+        <p class="chapter-lead">공통으로 정하는 것은 레이어 구조입니다. 픽셀을 그리는 정책과 폰트 출력 설정은 그 다음 단계입니다.</p>
+        <div class="responsibility-grid"><div><h3>명세가 정합니다</h3><ul><li>어떤 그룹의 어떤 인덱스를 참조하는가</li><li>어느 좌표에 어떤 순서로 놓는가</li><li>각 그룹 경계에서 어디를 자르는가</li><li>어느 코드 포인트에 연결하는가</li></ul></div><div><h3>렌더러·출력 설정이 정합니다</h3><ul><li>알파 합성 또는 마스크 결합</li><li>색·투명도·샘플링 처리</li><li>TTF 윤곽선 변환</li><li>기준선·글리프 전진 폭·폰트 단위 변환</li></ul></div></div>
+        <p>렌더러 정책이라고 해서 참조·배치·순서·클리핑을 임의로 바꿀 수는 없습니다. 필요한 이미지 형식이나 연산을 지원하지 못하면 명시적으로 알려야 합니다. 현재 저장소에는 <strong>TTF 생성기가 없습니다.</strong></p>
+        <h3>아직 정하지 않은 사항</h3>
+        <ol class="open-decisions"><li><span>추출 방식</span><p>방향을 네 가지로 제한할지, 줄바꿈·간격·글리프별 사각형을 추가할지.</p></li><li><span>저장 형식과 경로</span><p>구체적인 직렬화 형식·스키마와 이미지 경로 해석 규칙. 현재 검사기는 선언 파일의 디렉터리를 기준으로 상대 경로를 해석합니다.</p></li><li><span>출력 설정</span><p>렌더링 및 글리프 메트릭 설정의 구체적인 스키마.</p></li></ol>
+      </section>
+
+      <section id="tools" class="chapter tools-chapter" aria-labelledby="tools-title">
+        <div class="chapter-heading"><span class="chapter-number">10</span><h2 id="tools-title">파일과 도구</h2><a class="source-link" href="https://github.com/ywbird/jjaim/blob/main/README.md">README <span aria-hidden="true">↗</span></a></div>
+        <p class="chapter-lead">실제 선언과 PNG를 함께 열어 보면, 인덱스가 어떤 부품을 가리키는지 확인할 수 있습니다.</p>
+        <div class="resource-list">
+          <a href="https://github.com/ywbird/jjaim/blob/main/SPEC.md"><div><span class="resource-type">정본</span><h3>명세 원문 읽기</h3><p>Declarative Glyph Composition · Draft v0.3</p></div><span aria-hidden="true">↗</span></a>
+          <a href="tools/editor/"><div><span class="resource-type">브라우저</span><h3>텍스처 픽셀 편집기 열기</h3><p>선언은 그대로 두고 원본 PNG의 픽셀을 편집합니다.</p></div><span aria-hidden="true">↗</span></a>
+          <a href="tools/declaration-editor/"><div><span class="resource-type">브라우저</span><h3>그룹 선언 편집기 열기</h3><p>그룹 설명·임포트·텍스처 추출 설정을 편집합니다.</p></div><span aria-hidden="true">↗</span></a>
+          <a href="https://github.com/ywbird/jjaim/blob/main/tools/inspector/README.md"><div><span class="resource-type">CLI</span><h3>검사기 사용법 읽기</h3><p>선언을 검사하고, 그룹 관계를 조회하고, PNG를 렌더링합니다.</p></div><span aria-hidden="true">↗</span></a>
+        </div>
+        <div class="fixture-links"><span>예제 파일</span><a href="examples/hangul.json" download>hangul.json ↓</a><a href="examples/hangul.png" download>hangul.png ↓</a><a href="examples/ascii.json" download>ascii.json ↓</a><a href="examples/ascii.png" download>ascii.png ↓</a></div>
+        <h3>검사기에서 바로 확인하기</h3>
+        <p>Python 3.11 이상과 <a href="https://docs.astral.sh/uv/">uv</a>가 필요합니다. 저장소 루트에서 시작합니다.</p>
+        <div class="code-block"><div class="code-heading"><span>터미널 · 저장소 루트에서</span><button type="button" class="copy-button" data-copy="cli-code" hidden>코드 복사</button></div><pre tabindex="0" aria-label="검사기 실행 명령"><code id="cli-code">cd tools/inspector
+uv sync
+
+# 텍스처 없이 선언과 그룹 관계 조회
+uv run glyph-inspect groups ../../examples/hangul.json
+
+# 실제 PNG를 조합해 한글 문자 미리보기
+uv run glyph-inspect text ../../examples/hangul.json \
+  --text '짜임 가각나' --output text.png</code></pre></div>
+        <p class="small-note">두 브라우저 편집기는 <a href="https://ywbird.github.io/jjaim/">GitHub Pages</a>에서 설치 없이 이용할 수 있는 별도 프로그램입니다. 로컬 파일로 실행하려면 저장소 루트에서 <code>python3 -m http.server 8000</code>으로 파일 서버를 열면 됩니다. 빌드·CDN·애플리케이션 백엔드는 필요하지 않습니다.</p>
+      </section>
+      <footer class="document-footer"><p><strong>JJaim</strong><span>부품을 짜서, 글리프로.</span></p><a href="#top">문서 처음으로 ↑</a><p class="footer-source">해설 기준: <a href="https://github.com/ywbird/jjaim/blob/main/SPEC.md">SPEC.md Draft v0.3</a> · 이미지: 저장소의 실제 예제 텍스처</p></footer>
+    </main>
+  </div>
+  <p class="copy-status" id="copy-status" role="status" aria-live="polite" aria-atomic="true"></p>
+</body>
+</html>
