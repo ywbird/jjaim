@@ -9,6 +9,9 @@
 
 ## 피드백
 
+- [x] 그룹에도 문자 셋과 같은 목록 미리보기 그리드를 추가. — `b3703b2`, group tile browser test
+- [x] 그룹/문자셋 그리드를 접을 수 있게. — `b3703b2`, collapse + reload persistence test
+
 - [x] dark/light 테마 바꿀때, 자동으로 직계 글리프 목록의 글리프 색이 변하지 않음. dark->light 이면 글꼴이 흰색으로 남는식. 한번 클릭 해주거나 다른 글꼴로 바꿔서 업데이트 되게 하면 그제서야 바뀜. — `ed8ea3d`, browser child preview theme test
 - [x] checkbox still have rounded corners. 보통 appearance: none; 한 다음에 after나 before pseudo element로 하던데 — `ed8ea3d`, appearance:none + square check test
 
