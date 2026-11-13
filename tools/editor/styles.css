@@ -524,10 +524,13 @@ button.icon-btn.labeled { width: auto; padding: 0 8px; gap: 5px; }
 .field-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
 .field-heading label { margin: 0; color: var(--muted); font-size: 12px; }
 .collapse-btn {
-  width: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: auto;
   height: 26px;
   min-height: 26px;
-  padding: 0;
+  padding: 0 6px;
   border-color: transparent;
   background: transparent;
   color: var(--muted);
@@ -535,6 +538,7 @@ button.icon-btn.labeled { width: auto; padding: 0 8px; gap: 5px; }
 .collapse-btn:hover:not(:disabled) { color: var(--accent); }
 .collapse-btn .icon { width: 15px; height: 15px; transition: transform 0.12s ease; }
 .collapse-btn[aria-expanded="false"] .icon { transform: rotate(-90deg); }
+.collapse-label { font-size: 10.5px; white-space: nowrap; }
 .group-list, .list { display: flex; flex-direction: column; gap: 3px; max-height: 250px; overflow: auto; }
 .group-list.group-grid {
   display: grid;

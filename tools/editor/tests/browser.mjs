@@ -157,9 +157,11 @@ try {
   assert.equal(await page.$eval("#toggle-group-grid", (node) => node.getAttribute("aria-expanded")), "false");
   await page.click("#toggle-group-grid");
   assert.equal(await page.$eval("#group-list", (node) => node.hidden), false);
+  assert.equal(await page.$eval("#toggle-character-grid .collapse-label", (node) => node.textContent), "접기");
   await page.click("#toggle-character-grid");
   assert.equal(await page.$eval("#character-grid", (node) => node.hidden), true);
   assert.equal(await page.$eval("#page-controls", (node) => node.hidden), true);
+  assert.equal(await page.$eval("#toggle-character-grid .collapse-label", (node) => node.textContent), "펼치기");
   await page.click("#toggle-character-grid");
   assert.equal(await page.$eval("#character-grid", (node) => node.hidden), false);
   await page.waitForFunction(() => document.querySelector("#text-preview").width > 1);

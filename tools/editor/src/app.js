@@ -599,8 +599,10 @@ function applyGridVisibility() {
   els.characterGrid.hidden = characterCollapsed;
   els.pageControls.hidden = characterCollapsed;
   els.toggleCharacterGrid.setAttribute("aria-expanded", String(!characterCollapsed));
+  els.toggleCharacterGrid.querySelector(".collapse-label").textContent = t(characterCollapsed ? "nav.expand" : "nav.collapse");
   els.groupList.hidden = groupCollapsed;
   els.toggleGroupGrid.setAttribute("aria-expanded", String(!groupCollapsed));
+  els.toggleGroupGrid.querySelector(".collapse-label").textContent = t(groupCollapsed ? "nav.expand" : "nav.collapse");
 }
 
 function renderNavigator() {
