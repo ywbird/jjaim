@@ -218,8 +218,10 @@ export function affectedCharacters(declaration, assets, changesByPath) {
   return [...codepoints].sort((a, b) => a - b);
 }
 
-export function actualChanges(declaration, assets, changesByPath, codepoints, beforeSnapshot) {
-  const renderer = new Renderer(declaration, assets);
+export function actualChanges(declaration, assets, changesByPath, codepoints, beforeSnapshot, afterSnapshot = null) {
+  const after = assets.clone();
+  if (afterSnapshot) after.restore(afterSnapshot);
+  const renderer = new Renderer(declaration, after);
   const before = assets.clone();
   for (const [path, data] of beforeSnapshot) before.restore(new Map([[path, data]]));
   const beforeRenderer = new Renderer(declaration, before);
