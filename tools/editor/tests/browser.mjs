@@ -112,6 +112,11 @@ try {
   assert.equal(await page.$eval('script[src="src/app.js"]', (node, prefix) => node.src.startsWith(prefix), base), true);
   await page.waitForSelector("#empty-state", { visible: true });
   assert.equal(await page.$eval("#editor", (node) => node.hidden), true);
+  assert.equal(await page.$eval("#empty-open-presets", (node) => node.textContent), "프리셋");
+  await page.click("#empty-open-presets");
+  await page.waitForFunction(() => document.querySelector("#preset-dialog").open);
+  assert.equal(await page.$$eval("[data-preset]", (nodes) => nodes.length), 2);
+  await page.click("#preset-close");
 
   await page.setOfflineMode(true);
 

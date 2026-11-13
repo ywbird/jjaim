@@ -107,6 +107,7 @@ const els = {
   fileMenu: $("#file-menu"),
   openDeclaration: $("#open-declaration"),
   emptyOpenDeclaration: $("#empty-open-declaration"),
+  emptyOpenPresets: $("#empty-open-presets"),
   openPresets: $("#open-presets"),
   presetDialog: $("#preset-dialog"),
   presetClose: $("#preset-close"),
@@ -546,6 +547,12 @@ async function fetchPresetFile(path) {
   const response = await fetch(path);
   if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
   return response;
+}
+
+function showPresetDialog() {
+  els.presetReport.className = "muted";
+  els.presetReport.textContent = "";
+  els.presetDialog.showModal();
 }
 
 async function openPreset(name) {
@@ -2114,10 +2121,9 @@ function bindEvents() {
   });
   els.openPresets.addEventListener("click", () => {
     els.fileMenu.hidden = true;
-    els.presetReport.className = "muted";
-    els.presetReport.textContent = "";
-    els.presetDialog.showModal();
+    showPresetDialog();
   });
+  els.emptyOpenPresets.addEventListener("click", showPresetDialog);
   els.presetClose.addEventListener("click", () => els.presetDialog.close());
   for (const card of document.querySelectorAll("[data-preset]")) {
     card.addEventListener("click", () => openPreset(card.dataset.preset));
