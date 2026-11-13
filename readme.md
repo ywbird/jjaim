@@ -7,7 +7,8 @@
 - [`SPEC.md`](SPEC.md): 이미지 경로만 등록하는 텍스처셋, 그룹의 추출·임포트·반복, 유니코드 매핑의 명세
 - [`examples/`](examples/): 8×4×4벌 한글 선언·텍스처·원본 BIN과 8×16 DOS 글리프 선언·BIN·텍스처
 - [`tools/inspector/`](tools/inspector/): 선언 검사·PNG 미리보기 CLI ([사용법](tools/inspector/README.md), [명세](tools/inspector/SPEC.md))
-- [`tools/editor/`](tools/editor/): 그룹 설명·임포트·텍스처 영역을 편집하는 정적 브라우저 편집기 ([사용법](tools/editor/README.md), [설계](tools/editor/SPEC.md))
+- [`tools/editor/`](tools/editor/): 선언을 탐색하며 원본 PNG 픽셀을 편집하는 정적 브라우저 편집기 ([사용법](tools/editor/README.md), [설계](tools/editor/SPEC.md))
+- [`tools/declaration-editor/`](tools/declaration-editor/): 그룹 설명·임포트·텍스처 추출 영역을 편집하는 선언 편집기 ([사용법](tools/declaration-editor/README.md))
 - [`tools/font_bin_to_png.py`](tools/font_bin_to_png.py): BIN을 PNG 텍스처로 변환
 - [`docs/`](docs/): 8×4×4벌 참고 문서와 이전 명세 백업
 

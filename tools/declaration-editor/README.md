@@ -8,7 +8,7 @@
 
 ```sh
 python3 -m http.server 8000
-# http://localhost:8000/tools/editor/
+# http://localhost:8000/tools/declaration-editor/
 ```
 
 페이지가 열리면 `examples/hangul.json`을 자동으로 읽고 `examples/`의 PNG를 불러옵니다. 파일 서버 없이 열거나 다른 정의를 편집하려면 **JSON 열기**와 **텍스처 열기**를 사용합니다. 텍스처는 PNG 파일 이름으로 정의의 경로와 연결됩니다.
@@ -33,7 +33,7 @@ python3 -m http.server 8000
 ## 테스트
 
 ```sh
-cd tools/editor
+cd tools/declaration-editor
 node --test
 ```
 
