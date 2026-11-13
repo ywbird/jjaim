@@ -13,6 +13,6 @@
 ## Scope
 
 - The editor is a static page: HTML, CSS, and ES modules. No build step, no server, no new runtime dependency.
-- Keep files under `tools/editor/`. Touch `../../SPEC.md` or `examples/` only when the editor cannot work without the change.
+- Keep files under `tools/declaration-editor/`. Touch `../../SPEC.md` or `examples/` only when the editor cannot work without the change.
 - The example definition set is read-only input; the editor must export a new file instead of rewriting it.
 - Preserve unknown-to-the-editor data by editing a full document clone and validating before replacing the current state.
