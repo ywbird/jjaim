@@ -277,6 +277,12 @@ try {
         sameRow: Math.abs((label.top + label.bottom) / 2 - (slider.top + slider.bottom) / 2) < 1,
       };
     }), { labelBeforeSlider: true, sliderBeforeOutput: true, sameRow: true });
+    const shadowColumns = await page.$$eval(".shadow-row", (rows) => rows.map((row) => ({
+      sliderLeft: row.querySelector('input[type="range"]').getBoundingClientRect().left,
+      outputLeft: row.querySelector("output").getBoundingClientRect().left,
+    })));
+    assert.equal(shadowColumns.every((column) => Math.abs(column.sliderLeft - shadowColumns[0].sliderLeft) < 1), true);
+    assert.equal(shadowColumns.every((column) => Math.abs(column.outputLeft - shadowColumns[0].outputLeft) < 1), true);
     await page.type("#shadow-preset-name", "한글 프리셋");
     await page.click("#save-shadow-preset");
     assert.equal(await page.$$eval("#shadow-preset-list .shadow-preset-item", (nodes) => nodes.length), 1);

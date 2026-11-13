@@ -659,8 +659,8 @@ dialog::backdrop { background: rgba(16, 20, 26, 0.5); }
 #compare-panel .row { flex-wrap: wrap; }
 #compare-panel select { min-width: 0; flex: 1 1 120px; }
 #compare-panel input[type="range"] { flex: 1 1 100px; min-width: 80px; }
-.shadow-controls { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-.shadow-row { display: grid; grid-template-columns: auto minmax(0, 1fr) 48px; gap: 8px; align-items: center; }
+.shadow-controls { display: grid; grid-template-columns: max-content minmax(0, 1fr) 48px; gap: 8px; margin-top: 8px; }
+.shadow-row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; }
 .shadow-row label { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
 .shadow-row output { color: var(--muted); font-family: var(--font-mono); font-size: 10.5px; text-align: right; white-space: nowrap; }
 .shadow-row input[type="range"] { width: 100%; min-width: 0; }
