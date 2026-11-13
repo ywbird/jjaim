@@ -9,6 +9,14 @@
 
 ## 피드백
 
+- [x] 다크모드일때 비트맵 글꼴은 하얀색이도록 — `018b330`, browser canvas test
+- [x] 왼쪽 pane을 접으면 그리는 공간까지 사라지면 안됨. — `018b330`, explicit grid column + viewport test
+- [x] 캐릭터 셋의 글꼴들의 aspect ratio는 유지. — `018b330`, fixed-box fit
+- [x] 직계 자식 목록에 현재 글리프 배치가 존재하는 것은 글리프를 표시 — `018b330`, thumbnail test
+- [x] context row에 현재 직계 자식 글리프 목록 표시 — `018b330`, child strip test
+- [x] 부품 사용처 제외하고 영향 가능 문자, 실제 모양 변경은 제거 — `018b330`, DOM removed test
+- [x] 제목 DGC Texture Editor / DGC 텍스쳐 편집기 — `018b330`, title test
+
 - [x] ui 밀집도가 높음. 왼쪽, 오른쪽 Pane들 접는 기능 필요 — `6ff3ffd`, browser test
 - [x] 텍스트가 많음. 연필, 지우개 같은 UI 는 아이콘 사용. — `6ff3ffd`
 - [x] 브라우저에 저장됨 텍스트가 너비가 변하면서 UI가 불안정함. 저것도 아이콘 사용해서 너비 일정하게 유지 — `6ff3ffd`, fixed 22px
@@ -20,3 +28,4 @@
 - [x] 부품 사용처를 누르면 그 글리프로 이동하는 기능 — `6ff3ffd`, hangul browser test
 - [x] 다크모드(토글) — `6ff3ffd`, browser test
 - [x] i18n(한글, 영어) — `6ff3ffd`, browser test
+
