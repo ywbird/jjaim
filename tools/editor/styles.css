@@ -124,7 +124,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; }
   color: var(--muted);
   font-size: 13px;
 }
-.status-icon.saving { color: var(--warning); }
+.status-icon.saving, .status-icon.temp { color: var(--warning); }
 .status-icon.saved { color: var(--success); }
 .status-icon.failed { color: var(--danger); }
 
