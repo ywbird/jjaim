@@ -21,7 +21,7 @@ import {
   isBlankCharacter,
   paginate,
 } from "./unicode-sets.js";
-import { renderText, scaleImage } from "./text.js";
+import { renderText } from "./text.js";
 import { loadFont, clampShadowSettings } from "./font.js";
 import { applyStatic, getLanguage, initLanguage, setLanguage, t } from "./i18n.js";
 import {
@@ -68,7 +68,7 @@ const state = {
     onionBase: "r0",
     onionOpacity: 0.25,
     text: DEFAULT_TEXT,
-    textZoom: 1,
+    textZoom: 4,
   },
   selection: null,
   draft: null,
@@ -174,6 +174,11 @@ const els = {
   textZoom: $("#text-zoom"),
   textStatus: $("#text-status"),
   textPreview: $("#text-preview"),
+  textPreviewOpen: $("#text-preview-open"),
+  textPreviewDialog: $("#text-preview-dialog"),
+  textPreviewLarge: $("#text-preview-large"),
+  textPreviewClose: $("#text-preview-close"),
+  textPreviewSize: $("#text-preview-size"),
   historyInfo: $("#history-info"),
   historyList: $("#history-list"),
   historyActions: $("#history-actions"),
@@ -364,7 +369,7 @@ function defaultView(declaration) {
     onionBase: "r0",
     onionOpacity: 0.25,
     text: DEFAULT_TEXT,
-    textZoom: 1,
+    textZoom: 4,
   };
 }
 
@@ -1244,14 +1249,30 @@ function scheduleViewSave(reason = "view") {
   viewSaveTimer = setTimeout(() => persist(reason), 300);
 }
 
+function drawTextCanvas(canvas, image, { width, smooth }) {
+  canvas.width = Math.max(1, image.width);
+  canvas.height = Math.max(1, image.height);
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = smooth;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(imageCanvas(themeImage(image)), 0, 0);
+  canvas.style.width = width;
+  canvas.style.height = "auto";
+  canvas.style.imageRendering = smooth ? "auto" : "pixelated";
+}
+
 function drawTextPreview() {
   if (!state.workspace) return;
   try {
     const draftRenderer = state.draft?.previewRenderer;
     if (state.draft) state.draft.previewAssets.get(state.draft.path).current = state.draft.draft.data;
     const result = renderText(state.workspace.declaration, draftRenderer ?? state.renderer, els.textInput.value);
-    const scaled = scaleImage(result.image, Number(state.view.textZoom));
-    drawImageToCanvas(els.textPreview, scaled, 1, true);
+    drawTextCanvas(els.textPreview, result.image, { width: "100%", smooth: true });
+    if (els.textPreviewDialog.open) {
+      const zoom = Math.max(1, Math.trunc(Number(state.view.textZoom) || 1));
+      drawTextCanvas(els.textPreviewLarge, result.image, { width: `${result.image.width * zoom}px`, smooth: false });
+      els.textPreviewSize.textContent = `${result.image.width}×${result.image.height} · ${zoom}×`;
+    }
     els.textStatus.textContent = result.hasMappings
       ? result.unmapped.length ? t("text.unmapped", { count: result.unmapped.length }) : ""
       : t("text.noMappings");
@@ -1308,6 +1329,7 @@ function refreshAll() {
   els.openSources.disabled = !state.workspace;
   els.exportAll.disabled = !state.workspace || state.workspace.assets.paths().length === 0;
   els.exportProject.disabled = !state.workspace;
+  els.textPreviewOpen.disabled = !state.workspace;
   renderSetSelect();
   renderNavigator();
   renderGroupInfo();
@@ -1649,6 +1671,7 @@ function createBlankTexture(path, required) {
     renderGroupInfo();
     drawBoard();
     drawContext();
+    drawTextPreview();
     els.importReport.textContent = t("sources.blankCreated", { path, width: image.width, height: image.height });
     persist("link");
   } catch (error) {
@@ -1693,6 +1716,7 @@ async function handleImages(files) {
     renderGroupInfo();
     drawBoard();
     drawContext();
+    drawTextPreview();
     els.importReport.textContent = [
       result.linked.length ? t("sources.linkedCount", { count: result.linked.length }) : "",
       replaced ? t("sources.replacedCount", { count: replaced }) : "",
@@ -1734,6 +1758,7 @@ async function handleManualFile(file) {
     renderGroupInfo();
     drawBoard();
     drawContext();
+    drawTextPreview();
   } catch (error) {
     els.importReport.textContent = error.message;
   }
@@ -2047,6 +2072,12 @@ function bindEvents() {
     scheduleTextPreview();
   });
   els.textZoom.addEventListener("change", () => { state.view.textZoom = Number(els.textZoom.value); drawTextPreview(); });
+  els.textPreviewOpen.addEventListener("click", () => {
+    if (!state.workspace) return;
+    els.textPreviewDialog.showModal();
+    drawTextPreview();
+  });
+  els.textPreviewClose.addEventListener("click", () => els.textPreviewDialog.close());
 
   els.loadFont.addEventListener("click", () => els.fontFile.click());
   els.fontFile.addEventListener("change", async () => {

@@ -147,6 +147,30 @@ try {
   assert.equal(await page.$eval('[data-tool="pencil"]', (node) => node.textContent.trim()), "");
   assert.equal(await page.$("#possible-impact"), null);
   assert.equal(await page.$("#actual-impact"), null);
+  assert.equal(await page.$eval("#grid-toggle", (node) => getComputedStyle(node).borderRadius), "0px");
+  await page.waitForFunction(() => document.querySelector("#text-preview").width > 1);
+  const inlinePreview = await page.$eval("#text-preview", (canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    return { ratio: rect.width / rect.height, intrinsic: canvas.width / canvas.height, rendering: getComputedStyle(canvas).imageRendering };
+  });
+  assert.ok(Math.abs(inlinePreview.ratio - inlinePreview.intrinsic) < 0.05, `inline text preview must preserve aspect ratio: ${JSON.stringify(inlinePreview)}`);
+  assert.equal(inlinePreview.rendering, "auto");
+  await page.click("#text-preview-open");
+  await page.waitForFunction(() => document.querySelector("#text-preview-dialog").open);
+  const largePreview = await page.$eval("#text-preview-large", (canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    return { ratio: rect.width / rect.height, intrinsic: canvas.width / canvas.height, width: canvas.style.width };
+  });
+  assert.ok(Math.abs(largePreview.ratio - largePreview.intrinsic) < 0.05, `large text preview must preserve aspect ratio: ${JSON.stringify(largePreview)}`);
+  await page.select("#text-zoom", "4");
+  await page.waitForFunction(() => document.querySelector("#text-preview-large").style.width.endsWith("px"));
+  const zoomed = await page.$eval("#text-preview-large", (canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    return { ratio: rect.width / rect.height, intrinsic: canvas.width / canvas.height, width: canvas.style.width, naturalWidth: canvas.width };
+  });
+  assert.ok(Math.abs(zoomed.ratio - zoomed.intrinsic) < 0.05, `zoomed text preview must preserve aspect ratio: ${JSON.stringify(zoomed)}`);
+  assert.equal(zoomed.width, `${zoomed.naturalWidth * 4}px`);
+  await page.click("#text-preview-close");
   await page.click("#lang-toggle");
   assert.equal(await page.evaluate(() => document.documentElement.lang), "en");
   assert.equal(await page.$eval("#open-declaration", (node) => node.textContent), "Open declaration");
