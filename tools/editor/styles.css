@@ -322,9 +322,11 @@ button.icon-btn.labeled { width: auto; padding: 0 8px; gap: 5px; }
 .labeled:hover:not(:disabled) .btn-label { color: var(--accent-ink); }
 #toolbar #tool-status {
   margin-left: auto;
-  max-width: 250px;
+  flex: 1 1 90px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: right;
 }
 
 .row { display: flex; align-items: center; gap: 6px; }
@@ -717,7 +719,6 @@ html[data-antialias="on"] .group-glyph-tile canvas { image-rendering: auto; }
   :root { --nav-w: 260px; --insp-w: 312px; }
   .btn-label { display: none; }
   button.icon-btn.labeled { width: 32px; padding: 0; }
-  #toolbar #tool-status { max-width: 210px; }
   #context-label { max-width: 330px; }
 }
 

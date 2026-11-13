@@ -75,6 +75,7 @@ const state = {
   selection: null,
   groupGlyphPage: 0,
   groupGlyphAnchor: null,
+  clipboard: null,
   draft: null,
   drag: null,
   keyMove: null,
@@ -156,6 +157,8 @@ const els = {
   selectAll: $("#select-all"),
   clearSelection: $("#clear-selection"),
   deleteSelection: $("#delete-selection"),
+  copySelection: $("#copy-selection"),
+  pasteSelection: $("#paste-selection"),
   undo: $("#undo"),
   redo: $("#redo"),
   toolStatus: $("#tool-status"),
@@ -1472,6 +1475,9 @@ function updateToolAvailability() {
   }
   els.selectAll.disabled = !textureEditable;
   els.deleteSelection.disabled = !textureEditable || state.view.ownHidden;
+  const copyable = Boolean(ownInfo()?.ok) && !previewId() && !state.view.ownHidden;
+  els.copySelection.disabled = !copyable;
+  els.pasteSelection.disabled = !textureEditable || !state.clipboard || state.view.ownHidden;
 }
 
 function refreshAll() {
@@ -1754,6 +1760,51 @@ function eraseSelection() {
   const draft = beginDraft();
   if (!draft) return;
   draft.draft.fillRect(assetRect(selection, info.box), ERASER);
+  state.draft = draft;
+  commitDraft();
+}
+
+function copySelection() {
+  const group = currentGroup();
+  const info = ownInfo();
+  if (!group || !info?.ok || previewId() || state.view.ownHidden) {
+    els.toolStatus.textContent = t("status.copyUnavailable");
+    return;
+  }
+  const rect = state.selection
+    ? { ...state.selection }
+    : { x: 0, y: 0, width: info.box.width, height: info.box.height };
+  const data = new Uint8Array(rect.width * rect.height * 4);
+  for (let y = 0; y < rect.height; y += 1) {
+    for (let x = 0; x < rect.width; x += 1) {
+      const sx = rect.x + x;
+      const sy = rect.y + y;
+      if (sx < 0 || sy < 0 || sx >= info.box.width || sy >= info.box.height) continue;
+      const source = ((info.box.y + sy) * info.asset.width + info.box.x + sx) * 4;
+      data.set(info.asset.current.subarray(source, source + 4), (y * rect.width + x) * 4);
+    }
+  }
+  state.clipboard = { ...rect, data };
+  els.toolStatus.textContent = t("status.copied", { width: rect.width, height: rect.height });
+  updateToolAvailability();
+}
+
+function pasteClipboard() {
+  const clipboard = state.clipboard;
+  if (!clipboard) {
+    els.toolStatus.textContent = t("status.noClipboard");
+    return;
+  }
+  if (previewId()) {
+    els.toolStatus.textContent = t("status.previewBlocked");
+    return;
+  }
+  if (!ensureEditable() || !ownLayerWritable()) return;
+  const info = ownInfo();
+  if (!info?.ok) return;
+  const draft = beginDraft();
+  if (!draft) return;
+  draft.draft.paste({ x: info.box.x + clipboard.x, y: info.box.y + clipboard.y, width: clipboard.width, height: clipboard.height }, clipboard.data);
   state.draft = draft;
   commitDraft();
 }
@@ -2257,6 +2308,8 @@ function bindEvents() {
   });
   els.clearSelection.addEventListener("click", () => { state.selection = null; drawBoard(); });
   els.deleteSelection.addEventListener("click", eraseSelection);
+  els.copySelection.addEventListener("click", copySelection);
+  els.pasteSelection.addEventListener("click", pasteClipboard);
   els.undo.addEventListener("click", () => useHistory("undo"));
   els.redo.addEventListener("click", () => useHistory("redo"));
   els.indexPrev.addEventListener("click", () => selectGlyph(state.selected.group, state.selected.index - 1, { keepContext: true }));
@@ -2429,6 +2482,16 @@ function boardKeydown(event) {
     const group = currentGroup();
     if (group) state.selection = { x: 0, y: 0, width: group.width, height: group.height };
     drawBoard();
+    return;
+  }
+  if (ctrl && key.toLowerCase() === "c") {
+    event.preventDefault();
+    copySelection();
+    return;
+  }
+  if (ctrl && key.toLowerCase() === "v") {
+    event.preventDefault();
+    pasteClipboard();
     return;
   }
   if (ctrl && key.toLowerCase() === "s") {

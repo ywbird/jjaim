@@ -43,6 +43,25 @@ test("selection move uses a snapshot, overwrites transparency, and trims outside
   assert.deepEqual([0, 1, 2, 3, 4].map((x) => partial.data[x * 4 + 3]), [0, 0, 255, 255, 255]);
 });
 
+test("paste composites source over and trims outside the glyph", () => {
+  const { assets, asset } = assetFrom([black, clear, [255, 255, 255, 255]]);
+  const draft = new PixelDraft(asset, { x: 0, y: 0, width: 3, height: 1 });
+  draft.paste(
+    { x: 0, y: 0, width: 3, height: 1 },
+    Uint8Array.from([255, 0, 0, 128, 0, 255, 0, 255, 0, 0, 0, 0]),
+  );
+  assert.deepEqual([...draft.data.slice(0, 4)], [128, 0, 0, 255]);
+  assert.deepEqual([...draft.data.slice(4, 8)], [0, 255, 0, 255]);
+  assert.deepEqual([...draft.data.slice(8, 12)], [255, 255, 255, 255]);
+  assert.equal(assets.get("sheet.png").current[0], 0);
+
+  const trimmed = new PixelDraft(asset, { x: 0, y: 0, width: 3, height: 1 });
+  trimmed.paste({ x: 2, y: 0, width: 2, height: 1 }, Uint8Array.from([0, 0, 255, 255, 255, 0, 0, 255]));
+  assert.deepEqual([...trimmed.data.slice(0, 4)], [0, 0, 0, 255]);
+  assert.deepEqual([...trimmed.data.slice(4, 8)], [0, 0, 0, 0]);
+  assert.deepEqual([...trimmed.data.slice(8, 12)], [0, 0, 255, 255]);
+});
+
 test("history supports undo/redo and preserves abandoned branches", () => {
   const { assets, asset } = assetFrom([clear, clear, clear]);
   const history = new History(assets);

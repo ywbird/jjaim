@@ -99,6 +99,8 @@ const STRINGS = {
     "tool.selectAll": "전체 선택 (Ctrl/Cmd+A)",
     "tool.clearSelection": "선택 해제 (Escape)",
     "tool.deleteSelection": "선택 지우기 (Delete)",
+    "tool.copy": "복사 (Ctrl/Cmd+C)",
+    "tool.paste": "붙여넣기 (Ctrl/Cmd+V)",
     "tool.undo": "되돌리기 (Ctrl/Cmd+Z)",
     "tool.redo": "다시 실행 (Ctrl/Cmd+Shift+Z)",
     "view.ownHidden": "자기 레이어 숨기기",
@@ -245,6 +247,9 @@ const STRINGS = {
     "status.fontNoContext": "사용처 글자를 선택하세요",
     "status.historyReadonly": "과거 이력 미리보기 중입니다. 미리보기를 닫거나 복원하세요",
     "status.required": "이미지 {width}×{height}, 최소 {required}×{requiredHeight} 필요",
+    "status.copied": "{width}×{height} 복사됨",
+    "status.noClipboard": "복사한 영역이 없습니다",
+    "status.copyUnavailable": "소스 픽셀이 있는 그룹에서만 복사할 수 있습니다",
   },
   en: {
     "app.title": "JJaim Texture Editor",
@@ -344,6 +349,8 @@ const STRINGS = {
     "tool.selectAll": "Select all (Ctrl/Cmd+A)",
     "tool.clearSelection": "Clear selection (Escape)",
     "tool.deleteSelection": "Erase selection (Delete)",
+    "tool.copy": "Copy (Ctrl/Cmd+C)",
+    "tool.paste": "Paste (Ctrl/Cmd+V)",
     "tool.undo": "Undo (Ctrl/Cmd+Z)",
     "tool.redo": "Redo (Ctrl/Cmd+Shift+Z)",
     "view.ownHidden": "Hide own layer",
@@ -490,6 +497,9 @@ const STRINGS = {
     "status.fontNoContext": "Select a usage character",
     "status.historyReadonly": "Previewing past history. Close the preview or restore first",
     "status.required": "Image {width}×{height}, minimum {required}×{requiredHeight} required",
+    "status.copied": "Copied {width}×{height}",
+    "status.noClipboard": "Nothing copied yet",
+    "status.copyUnavailable": "Copy requires a group with source pixels",
   },
 };
 

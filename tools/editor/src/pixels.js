@@ -7,6 +7,15 @@ function inside(bounds, x, y) {
   return x >= bounds.x && y >= bounds.y && x < bounds.x + bounds.width && y < bounds.y + bounds.height;
 }
 
+function sourceOver(source, destination) {
+  const sa = source[3] / 255;
+  const da = destination[3] / 255;
+  const alpha = sa + da * (1 - sa);
+  if (alpha === 0) return [0, 0, 0, 0];
+  const blend = (index) => Math.round((source[index] * sa + destination[index] * da * (1 - sa)) / alpha);
+  return [blend(0), blend(1), blend(2), Math.round(alpha * 255)];
+}
+
 export class PixelDraft {
   constructor(asset, bounds) {
     this.asset = asset;
@@ -81,6 +90,21 @@ export class PixelDraft {
       }
     }
     return { dx, dy };
+  }
+
+  paste(rect, data) {
+    const image = { width: this.asset.width, height: this.asset.height, data: this.data };
+    for (let y = 0; y < rect.height; y += 1) {
+      for (let x = 0; x < rect.width; x += 1) {
+        const tx = rect.x + x;
+        const ty = rect.y + y;
+        if (!inside(this.bounds, tx, ty)) continue;
+        const offset = (y * rect.width + x) * 4;
+        const source = [data[offset], data[offset + 1], data[offset + 2], data[offset + 3]];
+        if (source[3] === 0) continue;
+        this.set(tx, ty, sourceOver(source, pixelAt(image, tx, ty)));
+      }
+    }
   }
 
   changes() {

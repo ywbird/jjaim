@@ -32,6 +32,8 @@
         <symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 7h5V2"/><path d="M20 7a8 8 0 1 0-1.5 9.5"/></symbol>
         <symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></symbol>
         <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h7M15 7h5M4 17h5M13 17h7"/><circle cx="13" cy="7" r="2"/><circle cx="11" cy="17" r="2"/></symbol>
+        <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12"/><path d="M16 8V4H4v12h4"/></symbol>
+        <symbol id="i-paste" viewBox="0 0 24 24"><path d="M8 5H5v15h14V5h-3"/><rect x="8" y="3" width="8" height="4"/></symbol>
         <symbol id="i-status-idle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/></symbol>
         <symbol id="i-status-saving" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
         <symbol id="i-status-saved" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
@@ -179,6 +181,8 @@
               <button id="delete-selection" class="icon-btn labeled" data-i18n-title="tool.deleteSelection" aria-label="선택 지우기">
                 <svg class="icon"><use href="#i-trash"/></svg><span class="btn-label" data-i18n="tool.deleteSelectionShort">지우기</span>
               </button>
+              <button id="copy-selection" class="icon-btn" data-i18n-title="tool.copy" aria-label="복사"><svg class="icon"><use href="#i-copy"/></svg></button>
+              <button id="paste-selection" class="icon-btn" data-i18n-title="tool.paste" aria-label="붙여넣기" disabled><svg class="icon"><use href="#i-paste"/></svg></button>
             </div>
             <span class="spacer"></span>
             <div class="tool-group" role="group" data-i18n-title="toolbar.history" aria-label="이력">

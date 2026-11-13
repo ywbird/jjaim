@@ -180,6 +180,7 @@ try {
   await page.select("#settings-language", "ko");
   await page.waitForFunction(() => document.documentElement.lang === "ko");
   await page.click("#settings-close");
+  assert.ok((await page.$eval("#toolbar", (node) => node.getBoundingClientRect().height)) < 60);
   assert.ok((await page.$$eval("#group-list .group-item", (nodes) => nodes.length)) > 0);
   assert.ok((await page.$$eval("#group-glyph-grid .group-glyph-tile", (nodes) => nodes.length)) > 0);
   assert.ok((await page.$$eval("#group-glyph-grid .group-glyph-tile canvas", (nodes) => nodes.length)) > 0);
@@ -473,6 +474,44 @@ try {
   await presetPage.waitForFunction(() => window.__editor.state.workspace?.fileName === "hangul.json" && window.__editor.state.workspace.assets.has("hangul.png"));
   assert.equal(await presetPage.evaluate(() => window.__editor.state.workspace.declaration.unicodeMap.size), 11267);
   assert.equal(await presetPage.evaluate(() => window.__editor.state.workspace.assets.get("hangul.png").width), 432);
+
+  await presetPage.evaluate(() => window.__editor.selectGlyph("initial_0", 0));
+  await presetPage.click("#copy-selection");
+  assert.equal(await presetPage.evaluate(() => window.__editor.state.clipboard?.width), 16);
+  await presetPage.evaluate(() => window.__editor.selectGlyph("initial_1", 0));
+  const beforePaste = await presetPage.evaluate(() => ({
+    head: window.__editor.state.workspace.history.headId,
+    pixels: [...window.__editor.state.workspace.assets.get("hangul.png").current],
+  }));
+  await presetPage.click("#paste-selection");
+  await presetPage.waitForFunction((head) => window.__editor.state.workspace.history.headId !== head, {}, beforePaste.head);
+  const afterPaste = await presetPage.evaluate(() => [...window.__editor.state.workspace.assets.get("hangul.png").current]);
+  assert.notEqual(afterPaste.join(","), beforePaste.pixels.join(","));
+
+  await presetPage.evaluate(() => window.__editor.selectGlyph("initial_0", 0));
+  await presetPage.focus("#board");
+  await presetPage.keyboard.down("Control");
+  await presetPage.keyboard.press("c");
+  await presetPage.keyboard.up("Control");
+  await presetPage.evaluate(() => window.__editor.selectGlyph("initial_2", 0));
+  const beforeKeyboardPaste = await presetPage.evaluate(() => window.__editor.state.workspace.history.headId);
+  await presetPage.focus("#board");
+  await presetPage.keyboard.down("Control");
+  await presetPage.keyboard.press("v");
+  await presetPage.keyboard.up("Control");
+  await presetPage.waitForFunction((head) => window.__editor.state.workspace.history.headId !== head, {}, beforeKeyboardPaste);
+
+  await presetPage.evaluate(() => {
+    window.__editor.selectGlyph("initial_0", 0);
+    window.__editor.state.selection = { x: 1, y: 1, width: 2, height: 2 };
+    window.__editor.drawBoard();
+  });
+  await presetPage.click("#copy-selection");
+  assert.deepEqual(await presetPage.evaluate(() => {
+    const clipboard = window.__editor.state.clipboard;
+    return { width: clipboard.width, height: clipboard.height };
+  }), { width: 2, height: 2 });
+
   assert.deepEqual(presetErrors, []);
   await presetPage.close();
 
