@@ -383,11 +383,13 @@ async function persist(reason = "edit") {
       if (token !== state.saveToken) return;
       state.storage.blocked = false;
       setStatus("브라우저에 저장됨", "saved");
+      updateToolAvailability();
     })
     .catch((error) => {
       if (token !== state.saveToken) return;
       state.storage.blocked = true;
       setStatus(`저장 실패: ${error.message}`, "failed");
+      updateToolAvailability();
       showSaveFailure();
     });
   await state.saveQueue;
@@ -403,6 +405,7 @@ function showSaveFailure() {
     state.storage.blocked = false;
     $("#retry-save")?.remove();
     $("#temp-save")?.remove();
+    updateToolAvailability();
     setStatus("임시 작업 (저장하지 않음)", "saving");
   } });
   status.after(retry, temp);
@@ -1096,7 +1099,7 @@ function scheduleTextPreview() {
 // ---------- rendering ----------
 
 function updateToolAvailability() {
-  const textureEditable = Boolean(ownInfo()?.ok) && !previewId();
+  const textureEditable = Boolean(ownInfo()?.ok) && !previewId() && !state.storage.readOnly && !state.storage.blocked;
   for (const button of document.querySelectorAll("[data-tool]")) {
     button.disabled = textureEditable ? state.view.ownHidden && button.dataset.tool !== "select" : true;
   }
