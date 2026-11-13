@@ -171,6 +171,7 @@ try {
   assert.equal(await page.$eval("#context", (canvas) => canvas.toDataURL()), contextBefore);
   await page.select("#settings-language", "en");
   await page.waitForFunction(() => document.documentElement.lang === "en");
+  assert.equal(await page.$eval("#open-declaration", (node) => node.textContent), "Open declaration");
   await page.select("#settings-language", "ko");
   await page.waitForFunction(() => document.documentElement.lang === "ko");
   await page.click("#settings-close");
@@ -217,11 +218,6 @@ try {
   assert.ok(Math.abs(zoomed.ratio - zoomed.intrinsic) < 0.05, `zoomed text preview must preserve aspect ratio: ${JSON.stringify(zoomed)}`);
   assert.equal(zoomed.width, `${zoomed.naturalWidth * 4}px`);
   await page.click("#text-preview-close");
-  await page.click("#lang-toggle");
-  assert.equal(await page.evaluate(() => document.documentElement.lang), "en");
-  assert.equal(await page.$eval("#open-declaration", (node) => node.textContent), "Open declaration");
-  await page.click("#lang-toggle");
-  assert.equal(await page.evaluate(() => document.documentElement.lang), "ko");
   const groupLight = await page.$eval("#group-glyph-grid .group-glyph-tile canvas", (canvas) => canvas.toDataURL());
   await page.click("#theme-toggle");
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "dark");
@@ -397,6 +393,14 @@ try {
   assert.notEqual(await page.$eval("#context", (canvas) => canvas.toDataURL()), beforeCharContext);
   assert.notEqual(await page.$eval("#board", (canvas) => canvas.toDataURL()), beforeCharBoard);
 
+  await page.evaluate(() => window.__editor.selectGlyph("medial_3", 0));
+  await page.waitForFunction(() => document.querySelectorAll("#structural-usage .icon-btn").length === 2);
+  assert.equal(await page.$eval("#structural-usage .icon-btn", (node) => node.textContent.trim()), "");
+  assert.equal(await page.$eval("#structural-usage .icon-btn", (node) => node.title), "이전");
+  const usagePageBefore = await page.$eval("#structural-usage", (node) => node.textContent);
+  await page.click("#structural-usage .icon-btn:last-of-type");
+  assert.notEqual(await page.$eval("#structural-usage", (node) => node.textContent), usagePageBefore);
+
   const beforeProjectImport = await page.evaluate(() => window.__editor.state.workspace.id);
   await (await page.$("#project-file")).uploadFile(projectPath);
   await page.waitForFunction((id) => window.__editor.state.workspace?.id !== id && window.__editor.state.workspace?.fileName === "browser.json", {}, beforeProjectImport);
@@ -444,6 +448,28 @@ try {
   }));
   assert.equal(trimmed.selection.x, 4);
   assert.deepEqual(trimmed.pixels, [0, 0, 0, 0, 0, 0, 0, 0], "pixels outside the glyph must be trimmed");
+
+  const presetPage = await browser.newPage();
+  await presetPage.setViewport({ width: 1280, height: 720 });
+  const presetErrors = [];
+  presetPage.on("pageerror", (error) => presetErrors.push(error.message));
+  await presetPage.goto(base, { waitUntil: "networkidle0" });
+  await presetPage.click("#file-menu-button");
+  await presetPage.click("#open-presets");
+  await presetPage.waitForFunction(() => document.querySelector("#preset-dialog").open);
+  assert.equal(await presetPage.$$eval("[data-preset]", (nodes) => nodes.length), 2);
+  await presetPage.click('[data-preset="ascii"]');
+  await presetPage.waitForFunction(() => window.__editor.state.workspace?.fileName === "ascii.json" && window.__editor.state.workspace.assets.has("ascii.png"));
+  assert.equal(await presetPage.evaluate(() => window.__editor.state.workspace.declaration.unicodeMap.size), 95);
+  assert.equal(await presetPage.$eval("#preset-dialog", (node) => node.open), false);
+  await presetPage.click("#file-menu-button");
+  await presetPage.click("#open-presets");
+  await presetPage.click('[data-preset="hangul"]');
+  await presetPage.waitForFunction(() => window.__editor.state.workspace?.fileName === "hangul.json" && window.__editor.state.workspace.assets.has("hangul.png"));
+  assert.equal(await presetPage.evaluate(() => window.__editor.state.workspace.declaration.unicodeMap.size), 11267);
+  assert.equal(await presetPage.evaluate(() => window.__editor.state.workspace.assets.get("hangul.png").width), 432);
+  assert.deepEqual(presetErrors, []);
+  await presetPage.close();
 
   const directServer = serve(EDITOR_ROOT);
   directServer.listen(0, "127.0.0.1");

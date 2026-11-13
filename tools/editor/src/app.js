@@ -97,7 +97,6 @@ const els = {
   layout: $("#layout"),
   toggleNav: $("#toggle-nav"),
   toggleInspector: $("#toggle-inspector"),
-  langToggle: $("#lang-toggle"),
   openSettings: $("#open-settings"),
   settingsDialog: $("#settings-dialog"),
   settingsClose: $("#settings-close"),
@@ -108,6 +107,10 @@ const els = {
   fileMenu: $("#file-menu"),
   openDeclaration: $("#open-declaration"),
   emptyOpenDeclaration: $("#empty-open-declaration"),
+  openPresets: $("#open-presets"),
+  presetDialog: $("#preset-dialog"),
+  presetClose: $("#preset-close"),
+  presetReport: $("#preset-report"),
   openProject: $("#open-project"),
   projectFile: $("#project-file"),
   exportProject: $("#export-project"),
@@ -281,8 +284,6 @@ function setStatus(text, kind = "") {
 
 function applyLanguage() {
   applyStatic();
-  els.langToggle.textContent = getLanguage() === "ko" ? "EN" : "한";
-  els.langToggle.title = getLanguage() === "ko" ? "Switch to English" : "한국어로 전환";
   els.settingsLanguage.value = getLanguage();
   if (!state.workspace) {
     renderSetSelect();
@@ -525,6 +526,59 @@ async function openDeclarationFile(file) {
   } catch (error) {
     setStatus(t("status.openFailed", { message: error.message }), "failed");
     els.globalError.textContent = error.message;
+  }
+}
+
+const PRESETS = {
+  ascii: {
+    fileName: "ascii.json",
+    declaration: "presets/ascii.json",
+    textures: ["presets/ascii.png"],
+  },
+  hangul: {
+    fileName: "hangul.json",
+    declaration: "presets/hangul.json",
+    textures: ["presets/ascii.png", "presets/hangul.png"],
+  },
+};
+
+async function fetchPresetFile(path) {
+  const response = await fetch(path);
+  if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
+  return response;
+}
+
+async function openPreset(name) {
+  const preset = PRESETS[name];
+  if (!preset) return;
+  const cards = [...document.querySelectorAll("[data-preset]")];
+  cards.forEach((card) => { card.disabled = true; });
+  els.presetReport.className = "muted";
+  els.presetReport.textContent = t("presets.loading");
+  const previous = { selected: state.selected, context: state.context };
+  try {
+    const text = await (await fetchPresetFile(preset.declaration)).text();
+    const declaration = parseDeclaration(text, { fileName: preset.fileName });
+    const workspace = newWorkspace(declaration, text, preset.fileName);
+    const files = [];
+    for (const path of preset.textures) {
+      const buffer = await (await fetchPresetFile(path)).arrayBuffer();
+      files.push(new File([buffer], path.slice(path.lastIndexOf("/") + 1), { type: "image/png" }));
+    }
+    const result = await importImages(declaration, workspace.assets, files);
+    if (result.errors.length) throw new Error(result.errors.join(" / "));
+    if (result.linked.length !== files.length) throw new Error(t("presets.incomplete"));
+    if (state.storage.lock) state.storage.lock.release();
+    state.workspace = workspace;
+    els.presetDialog.close();
+    adoptWorkspace(workspace);
+  } catch (error) {
+    state.selected = previous.selected;
+    state.context = previous.context;
+    els.presetReport.className = "muted error";
+    els.presetReport.textContent = t("presets.failed", { message: error.message });
+  } finally {
+    cards.forEach((card) => { card.disabled = false; });
   }
 }
 
@@ -1258,9 +1312,9 @@ function renderUsageList(element, codepoints, { unknown = false } = {}) {
   if (page.pageCount > 1) {
     const row = el("div", { class: "row wrap" });
     row.append(
-      el("button", { class: "small", text: t("nav.prev"), disabled: page.page === 0, onclick: () => { state.impactPage[element.id] = page.page - 1; renderUsageList(element, codepoints); } }),
+      el("button", { class: "icon-btn", type: "button", title: t("nav.prev"), "aria-label": t("nav.prev"), disabled: page.page === 0, onclick: () => { state.impactPage[element.id] = page.page - 1; renderUsageList(element, codepoints); } }, icon("chevron-left")),
       el("span", { class: "muted", text: `${page.page + 1}/${page.pageCount}` }),
-      el("button", { class: "small", text: t("nav.next"), disabled: page.page >= page.pageCount - 1, onclick: () => { state.impactPage[element.id] = page.page + 1; renderUsageList(element, codepoints); } }),
+      el("button", { class: "icon-btn", type: "button", title: t("nav.next"), "aria-label": t("nav.next"), disabled: page.page >= page.pageCount - 1, onclick: () => { state.impactPage[element.id] = page.page + 1; renderUsageList(element, codepoints); } }, icon("chevron-right")),
       el("span", { class: "muted", text: query ? t("usage.filtered", { visible: visible.length, total: codepoints.length }) : t("usage.total", { count: codepoints.length }) }),
     );
     element.append(row);
@@ -2016,10 +2070,6 @@ function bindEvents() {
     applyLayout();
     persist("view");
   });
-  els.langToggle.addEventListener("click", () => {
-    setLanguage(getLanguage() === "ko" ? "en" : "ko");
-    applyLanguage();
-  });
   els.themeToggle.addEventListener("click", () => {
     applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
   });
@@ -2062,6 +2112,16 @@ function bindEvents() {
     els.fileMenu.hidden = true;
     els.declarationFile.click();
   });
+  els.openPresets.addEventListener("click", () => {
+    els.fileMenu.hidden = true;
+    els.presetReport.className = "muted";
+    els.presetReport.textContent = "";
+    els.presetDialog.showModal();
+  });
+  els.presetClose.addEventListener("click", () => els.presetDialog.close());
+  for (const card of document.querySelectorAll("[data-preset]")) {
+    card.addEventListener("click", () => openPreset(card.dataset.preset));
+  }
   els.emptyOpenDeclaration.addEventListener("click", () => els.declarationFile.click());
   els.declarationFile.addEventListener("change", async () => {
     const file = els.declarationFile.files?.[0];
@@ -2426,8 +2486,6 @@ function commitKeyMove() {
 }
 
 initLanguage();
-els.langToggle.textContent = getLanguage() === "ko" ? "EN" : "한";
-els.langToggle.title = getLanguage() === "ko" ? "Switch to English" : "한국어로 전환";
 els.settingsLanguage.value = getLanguage();
 let initialTheme = "light";
 try {
