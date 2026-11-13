@@ -9,6 +9,8 @@
 
 ## 피드백
 
+- [x] 내가 의미한 그룹 목록 그리드는 그룹 목록이 아니라 그룹 내부의 글꼴 목록이었음. — `7d7a1ce`, selected-group glyph grid + pager test
+
 - [x] 그룹 목록 그리드는 우측에 그룹에서 직계 자식 위쪽에 있도록. — `bd17a4a`, DOM order browser test
 - [x] 문구 미리보기를 왼쪽으로 옮기기. — `bd17a4a`, navigator containment test
 
