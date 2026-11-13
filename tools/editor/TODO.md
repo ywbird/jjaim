@@ -9,6 +9,8 @@
 
 ## 피드백
 
+- [x] 스펙 이름이 JJaim으로 정해졌으므로 제목을 JJaim Texture Editor / JJaim 텍스쳐 편집기 — `b04a82a`, title browser test
+
 - [x] 그리드도 좀 얇음. 좀 더 두껍게 — `44f8ceb`, 2px grid browser pixel test
 - [x] 자동으로 마지막 작업 불러오기 — `44f8ceb`, reload auto-load browser test
 - [x] 선언 기반 텍스쳐 최소 크기로 선언만 주어졌을때 텍스쳐 연결 popup에 빈 텍스쳐 생성 버튼 — `44f8ceb`, blank texture unit + browser test
