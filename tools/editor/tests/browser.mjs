@@ -250,10 +250,22 @@ try {
   if (existsSync(FONT)) {
     await (await page.$("#font-file")).uploadFile(FONT);
     await page.waitForFunction(() => window.__editor.state.font?.hasCodepoint(0x41) === true);
-    await page.click("#open-works");
-    await page.click('[data-records-tab="compare"]');
     assert.equal(await page.$eval("#shadow-toggle", (node) => node.disabled), false);
+    assert.equal(await page.$('[data-records-tab="compare"]'), null);
+    assert.equal(await page.evaluate(() => document.querySelector("#navigator").contains(document.querySelector("#shadow-controls"))), true);
+    assert.equal(await page.$eval("#shadow-size", (node) => node.type), "range");
+    assert.equal(await page.$eval("#shadow-x", (node) => node.type), "range");
+    assert.equal(
+      await page.$eval("#shadow-x", (node) => Number(node.max)),
+      await page.evaluate(() => window.__editor.state.workspace.declaration.groups.get(window.__editor.state.selected.group).width),
+    );
     await page.waitForSelector("#shadow-toggle", { visible: true });
+    await page.$eval("#shadow-size", (node) => {
+      node.value = "32";
+      node.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await page.waitForFunction(() => window.__editor.state.shadow.size === 32);
+    assert.equal(await page.$eval("#shadow-size-value", (node) => node.textContent), "32px");
     await page.click("#shadow-toggle");
     assert.equal(await page.evaluate(() => window.__editor.state.shadow.visible), true);
     const shadowPixels = await page.$eval("#board", (canvas) => {
@@ -263,7 +275,6 @@ try {
       return count;
     });
     assert.ok(shadowPixels > 10, "font shadow must be visible on the drawing board");
-    await page.click("#works-close");
   }
 
   const board = await page.$("#board");

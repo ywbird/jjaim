@@ -192,9 +192,13 @@ const els = {
   fontStatus: $("#font-status"),
   shadowControls: $("#shadow-controls"),
   shadowSize: $("#shadow-size"),
+  shadowSizeValue: $("#shadow-size-value"),
   shadowX: $("#shadow-x"),
+  shadowXValue: $("#shadow-x-value"),
   shadowY: $("#shadow-y"),
+  shadowYValue: $("#shadow-y-value"),
   shadowOpacity: $("#shadow-opacity"),
+  shadowOpacityValue: $("#shadow-opacity-value"),
   textPreset: $("#text-preset"),
   textInput: $("#text-input"),
   textZoom: $("#text-zoom"),
@@ -339,10 +343,6 @@ function setRecordsTab(tab) {
     panel.hidden = panel.dataset.recordsPanel !== tab;
   }
   if (tab === "history") renderHistory();
-  if (tab === "compare") {
-    renderBaseSelects();
-    updateFontUi();
-  }
 }
 
 function openRecords(tab = "works") {
@@ -1511,22 +1511,59 @@ function refreshAll() {
   renderStructuralUsages();
   renderBaseSelects();
   renderHistory();
+  updateFontUi();
   drawBoard();
   drawContext();
   if (state.selected) renderChildStrip(currentGroup(), state.selected.index);
   drawTextPreview();
-  updateFontUi();
+}
+
+function shadowSliderRange() {
+  const group = currentGroup();
+  const width = group?.width ?? 16;
+  const height = group?.height ?? 16;
+  const size = Math.min(256, Math.max(0.25, Number(state.shadow.size) || 16));
+  let fontWidth = size;
+  const cp = currentCodepoint();
+  if (state.font && cp != null && state.font.hasCodepoint(cp)) {
+    const ctx = document.createElement("canvas").getContext("2d");
+    ctx.font = `${size}px "${state.font.family}"`;
+    const measured = ctx.measureText(String.fromCodePoint(cp)).width;
+    if (Number.isFinite(measured) && measured > 0) fontWidth = measured;
+  }
+  return {
+    xMin: -Math.ceil(fontWidth * 4) / 4,
+    xMax: width,
+    yMin: -Math.ceil(size * 4) / 4,
+    yMax: height,
+  };
+}
+
+function formatSliderValue(value, unit = "px") {
+  return `${Math.round(value * 100) / 100}${unit}`;
 }
 
 function updateFontUi() {
+  const range = shadowSliderRange();
+  state.shadow.size = Math.min(256, Math.max(0.25, state.shadow.size));
+  state.shadow.x = Math.min(range.xMax, Math.max(range.xMin, state.shadow.x));
+  state.shadow.y = Math.min(range.yMax, Math.max(range.yMin, state.shadow.y));
   els.shadowControls.hidden = !state.font;
   els.shadowToggle.disabled = !state.font;
   els.shadowToggle.checked = Boolean(state.shadow.visible);
   els.fontStatus.textContent = state.font ? state.font.name : t("compare.noFont");
   els.shadowSize.value = String(state.shadow.size);
+  els.shadowX.min = String(range.xMin);
+  els.shadowX.max = String(range.xMax);
   els.shadowX.value = String(state.shadow.x);
+  els.shadowY.min = String(range.yMin);
+  els.shadowY.max = String(range.yMax);
   els.shadowY.value = String(state.shadow.y);
   els.shadowOpacity.value = String(state.shadow.opacity);
+  els.shadowSizeValue.textContent = formatSliderValue(state.shadow.size);
+  els.shadowXValue.textContent = formatSliderValue(state.shadow.x);
+  els.shadowYValue.textContent = formatSliderValue(state.shadow.y);
+  els.shadowOpacityValue.textContent = formatSliderValue(state.shadow.opacity * 100, "%");
 }
 
 // ---------- editing ----------
@@ -2357,13 +2394,13 @@ function bindEvents() {
     }
   });
   for (const [input, key] of [[els.shadowSize, "size"], [els.shadowX, "x"], [els.shadowY, "y"], [els.shadowOpacity, "opacity"]]) {
-    input.addEventListener("change", () => {
+    input.addEventListener("input", () => {
       state.shadow = clampShadowSettings({ ...state.shadow, [key]: Number(input.value), visible: state.shadow.visible });
-      state.font.settings = { ...state.shadow };
       updateFontUi();
+      state.font.settings = { ...state.shadow };
       drawBoard();
       drawContext();
-      persist("font");
+      scheduleViewSave("font");
     });
   }
   els.shadowToggle.addEventListener("change", () => {

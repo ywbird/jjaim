@@ -130,6 +130,48 @@
           </button>
           <p class="text-preview-hint" data-i18n="text.openHint">클릭하여 크게 보기</p>
         </section>
+        <hr>
+        <section id="compare-panel" class="panel-section">
+          <h2 data-i18n="compare.title">비교</h2>
+          <label class="check"><input id="diff-toggle" type="checkbox"> <span data-i18n="compare.diff">픽셀 diff</span></label>
+          <div class="row">
+            <select id="diff-base"></select>
+            <span id="diff-counts" class="muted"></span>
+          </div>
+          <label class="check"><input id="onion-toggle" type="checkbox"> <span data-i18n="compare.onion">어니언 스킨</span></label>
+          <div class="row">
+            <select id="onion-base"></select>
+            <input id="onion-opacity" type="range" min="0" max="1" step="0.05" value="0.25">
+          </div>
+          <h3 data-i18n="compare.font">참고 폰트 섀도</h3>
+          <div class="row wrap">
+            <button id="load-font" data-i18n="compare.openFont">폰트 열기</button>
+            <label class="check"><input id="shadow-toggle" type="checkbox" disabled> <span data-i18n="compare.showFont">표시</span></label>
+            <span id="font-status" class="muted" data-i18n="compare.noFont">폰트 없음</span>
+          </div>
+          <div id="shadow-controls" class="shadow-controls" hidden>
+            <div class="shadow-row">
+              <label for="shadow-size" data-i18n="compare.size">크기</label>
+              <output id="shadow-size-value"></output>
+              <input id="shadow-size" type="range" min="0.25" max="256" step="0.25" value="16">
+            </div>
+            <div class="shadow-row">
+              <label for="shadow-x">x</label>
+              <output id="shadow-x-value"></output>
+              <input id="shadow-x" type="range" min="-16" max="16" step="0.25" value="0">
+            </div>
+            <div class="shadow-row">
+              <label for="shadow-y">y</label>
+              <output id="shadow-y-value"></output>
+              <input id="shadow-y" type="range" min="-16" max="16" step="0.25" value="0">
+            </div>
+            <div class="shadow-row">
+              <label for="shadow-opacity" data-i18n="compare.opacity">불투명</label>
+              <output id="shadow-opacity-value"></output>
+              <input id="shadow-opacity" type="range" min="0" max="1" step="0.05" value="0.25">
+            </div>
+          </div>
+        </section>
       </aside>
 
       <section id="workspace">
@@ -269,7 +311,6 @@
         <div id="records-tabs" class="tabs" role="tablist">
           <button class="tab" data-records-tab="works" data-i18n="works.open">저장된 작업</button>
           <button class="tab" data-records-tab="history" data-i18n="history.title">이력</button>
-          <button class="tab" data-records-tab="compare" data-i18n="compare.title">비교</button>
         </div>
         <section data-records-panel="works">
           <div id="works-list" class="list"></div>
@@ -282,30 +323,6 @@
             <button id="diff-use-revision" data-i18n="history.diffBase">diff 기준</button>
             <button id="onion-use-revision" data-i18n="history.onionBase">어니언 기준</button>
             <button id="clear-preview" data-i18n="history.clearPreview">미리보기 닫기</button>
-          </div>
-        </section>
-        <section data-records-panel="compare" hidden>
-          <label class="check"><input id="diff-toggle" type="checkbox"> <span data-i18n="compare.diff">픽셀 diff</span></label>
-          <div class="row">
-            <select id="diff-base"></select>
-            <span id="diff-counts" class="muted"></span>
-          </div>
-          <label class="check"><input id="onion-toggle" type="checkbox"> <span data-i18n="compare.onion">어니언 스킨</span></label>
-          <div class="row">
-            <select id="onion-base"></select>
-            <input id="onion-opacity" type="range" min="0" max="1" step="0.05" value="0.25">
-          </div>
-          <h3 data-i18n="compare.font">참고 폰트 섀도</h3>
-          <div class="row wrap">
-            <button id="load-font" data-i18n="compare.openFont">폰트 열기</button>
-            <label class="check"><input id="shadow-toggle" type="checkbox" disabled> <span data-i18n="compare.showFont">표시</span></label>
-            <span id="font-status" class="muted" data-i18n="compare.noFont">폰트 없음</span>
-          </div>
-          <div id="shadow-controls" class="row wrap" hidden>
-            <label><span data-i18n="compare.size">크기</span> <input id="shadow-size" type="number" min="0.25" max="1024" step="0.25" value="16"></label>
-            <label>x <input id="shadow-x" type="number" min="-4096" max="4096" step="0.25" value="0"></label>
-            <label>y <input id="shadow-y" type="number" min="-4096" max="4096" step="0.25" value="0"></label>
-            <label><span data-i18n="compare.opacity">불투명</span> <input id="shadow-opacity" type="number" min="0" max="1" step="0.05" value="0.25"></label>
           </div>
         </section>
       </div>
