@@ -103,7 +103,7 @@ try {
   const client = await page.createCDPSession();
   await client.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: downloadDir });
   await page.goto(base, { waitUntil: "networkidle0" });
-  assert.equal(await page.title(), "선언 기반 글꼴 텍스처 편집기");
+  assert.equal(await page.title(), "DGC 텍스쳐 편집기");
   assert.equal(await page.$eval('script[src="src/app.js"]', (node, prefix) => node.src.startsWith(prefix), base), true);
 
   await page.setOfflineMode(true);
@@ -122,6 +122,8 @@ try {
 
   assert.equal(await page.$eval("#child-filter", (node) => node.checked), true);
   assert.equal(await page.$eval('[data-tool="pencil"]', (node) => node.textContent.trim()), "");
+  assert.equal(await page.$("#possible-impact"), null);
+  assert.equal(await page.$("#actual-impact"), null);
   await page.click("#lang-toggle");
   assert.equal(await page.evaluate(() => document.documentElement.lang), "en");
   assert.equal(await page.$eval("#open-declaration", (node) => node.textContent), "Open declaration");
@@ -129,10 +131,20 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.lang), "ko");
   await page.click("#theme-toggle");
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "dark");
+  assert.equal(await page.$eval("#board", (canvas) => {
+    const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+    for (let index = 0; index < data.length; index += 4) {
+      if (data[index + 3] === 255 && data[index] === 255 && data[index + 1] === 255 && data[index + 2] === 255) return true;
+    }
+    return false;
+  }), true);
   await page.click("#theme-toggle");
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "light");
   await page.click("#toggle-nav");
   assert.equal(await page.$eval("#layout", (node) => node.classList.contains("hide-left")), true);
+  const collapsedBoard = await (await page.$("#board")).boundingBox();
+  assert.ok(collapsedBoard.width > 0 && collapsedBoard.height > 0, "board must remain visible when the left panel is collapsed");
+  assert.ok(collapsedBoard.x >= 0 && collapsedBoard.x + collapsedBoard.width <= 1280, `collapsed board must stay inside the viewport: ${JSON.stringify(collapsedBoard)}`);
   await page.click("#toggle-nav");
   await page.click("#toggle-inspector");
   assert.equal(await page.$eval("#layout", (node) => node.classList.contains("hide-right")), true);
@@ -208,6 +220,8 @@ try {
   await page.click("#child-filter");
   assert.ok((await page.$$eval("#child-info .list-item", (nodes) => nodes.length)) > 2);
   await page.click("#child-filter");
+  assert.equal(await page.$$eval("#child-strip .child-chip", (nodes) => nodes.length), 2);
+  assert.ok((await page.$$eval("#child-info canvas", (nodes) => nodes.length)) > 0);
 
   const directServer = serve(EDITOR_ROOT);
   directServer.listen(0, "127.0.0.1");
@@ -216,7 +230,7 @@ try {
     const directPage = await browser.newPage();
     await directPage.setViewport({ width: 1280, height: 720 });
     await directPage.goto(`http://127.0.0.1:${directServer.address().port}/`, { waitUntil: "networkidle0" });
-    assert.equal(await directPage.title(), "선언 기반 글꼴 텍스처 편집기");
+    assert.equal(await directPage.title(), "DGC 텍스쳐 편집기");
     await directPage.waitForFunction(() => window.__editor?.state?.workspace === null);
   } finally {
     directServer.close();

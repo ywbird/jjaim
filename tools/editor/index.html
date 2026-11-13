@@ -3,13 +3,13 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title data-i18n="app.title">선언 기반 글꼴 텍스처 편집기</title>
+    <title data-i18n="app.title">DGC 텍스쳐 편집기</title>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <header id="topbar">
       <button id="toggle-nav" class="icon-btn" data-i18n-title="nav.toggle" aria-label="탐색 패널">◧</button>
-      <strong data-i18n="app.shortTitle">텍스처 편집기</strong>
+      <strong data-i18n="app.shortTitle">DGC 텍스쳐 편집기</strong>
       <span id="workspace-name"></span>
       <span id="save-status" class="status-icon" role="status" aria-live="polite" title="변경 없음">●</span>
       <span class="spacer"></span>
@@ -66,7 +66,7 @@
 
       <section id="workspace">
         <div id="empty-state">
-          <h1 data-i18n="empty.title">선언 기반 글꼴 텍스처 편집기</h1>
+          <h1 data-i18n="empty.title">DGC 텍스쳐 편집기</h1>
           <p data-i18n="empty.body">선언 JSON을 열고 PNG 텍스처를 연결하세요. 예제는 자동으로 불러오지 않습니다.</p>
           <button id="empty-open-declaration" data-i18n="menu.openDeclaration">선언 열기</button>
           <button id="empty-open-works" data-i18n="works.open">저장된 작업</button>
@@ -111,6 +111,7 @@
           </div>
           <div id="context-row">
             <canvas id="context" aria-label="결과 문맥 미리보기"></canvas>
+            <div id="child-strip" class="child-strip" aria-label="직계 자식 글리프"></div>
             <div id="layer-list" class="layer-list"></div>
           </div>
         </div>
@@ -140,12 +141,6 @@
           <h3 data-i18n="usage.structural">부품 사용처</h3>
           <input class="usage-search" data-usage-search="structural-usage" type="search" data-i18n-placeholder="usage.searchStructural" placeholder="사용처 검색">
           <div id="structural-usage" class="list muted" data-i18n="group.none">선택 없음</div>
-          <h3 data-i18n="usage.possible">영향 가능 문자</h3>
-          <input class="usage-search" data-usage-search="possible-impact" type="search" data-i18n-placeholder="usage.searchPossible" placeholder="영향 문자 검색">
-          <div id="possible-impact" class="list muted" data-i18n="impact.none">변경 명령 없음</div>
-          <h3 data-i18n="usage.actual">실제 모양 변경</h3>
-          <input class="usage-search" data-usage-search="actual-impact" type="search" data-i18n-placeholder="usage.searchActual" placeholder="실제 변경 검색">
-          <div id="actual-impact" class="list muted" data-i18n="impact.none">변경 명령 없음</div>
         </section>
         <hr>
         <section>

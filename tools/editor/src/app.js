@@ -2,20 +2,16 @@ import { parseDeclaration, findGroupGlyphByText, cropBox } from "./declaration.j
 import { AssetStore, sourcePath, sourceRows } from "./assets.js";
 import {
   Renderer,
-  actualChanges,
-  affectedCharacters,
   buildLayerTree,
   flattenLayers,
   diffImages,
-  sameImage,
 } from "./compose.js";
-import { History, pixelChangesForRect } from "./history.js";
-import { PixelDraft, ERASER, PENCIL, boundsOf, diffSnapshotToAssets } from "./pixels.js";
+import { History } from "./history.js";
+import { PixelDraft, ERASER, PENCIL, diffSnapshotToAssets } from "./pixels.js";
 import { importImages, manualLink, replaceAssets } from "./importer.js";
 import { exportAll, exportChanged, exportSingle } from "./exporter.js";
 import {
   BUILT_IN_SETS,
-  PAGE_SIZES,
   characterDisplay,
   charactersForSet,
   codepointLabel,
@@ -28,7 +24,6 @@ import { renderText, scaleImage } from "./text.js";
 import { loadFont, clampShadowSettings } from "./font.js";
 import { applyStatic, getLanguage, initLanguage, setLanguage, t } from "./i18n.js";
 import {
-  PersistenceUnavailable,
   WorkspaceLock,
   deleteWorkspace,
   listWorkspaces,
@@ -83,8 +78,6 @@ const state = {
   saveQueue: Promise.resolve(),
   saveToken: 0,
   historyPreview: null,
-  impact: null,
-  impactToken: 0,
   usageQuery: {},
   font: null,
   shadow: { visible: false, size: 16, x: 0, y: 0, opacity: 0.25 },
@@ -146,6 +139,7 @@ const els = {
   selectionStatus: $("#selection-status"),
   contextLabel: $("#context-label"),
   context: $("#context"),
+  childStrip: $("#child-strip"),
   layerList: $("#layer-list"),
   groupDetail: $("#group-detail"),
   groupIndexControls: $("#group-index-controls"),
@@ -157,8 +151,6 @@ const els = {
   childFilter: $("#child-filter"),
   childInfo: $("#child-info"),
   structuralUsage: $("#structural-usage"),
-  possibleImpact: $("#possible-impact"),
-  actualImpact: $("#actual-impact"),
   diffToggle: $("#diff-toggle"),
   diffBase: $("#diff-base"),
   diffCounts: $("#diff-counts"),
@@ -252,6 +244,12 @@ function applyTheme(theme) {
   } catch {
     // Theme preference is optional.
   }
+  if (state.workspace) {
+    renderNavigator();
+    drawBoard();
+    drawContext();
+    drawTextPreview();
+  }
 }
 
 function applyLayout() {
@@ -278,10 +276,6 @@ function setRecordsTab(tab) {
 function openRecords(tab = "works") {
   if (!els.recordsDialog.open) els.recordsDialog.showModal();
   setRecordsTab(tab);
-}
-
-function groupName(group) {
-  return group.name;
 }
 
 function currentGroup() {
@@ -387,7 +381,6 @@ function adoptWorkspace(workspace, { restored = false } = {}) {
   state.context = null;
   state.selection = null;
   state.draft = null;
-  state.impact = null;
   state.historyPreview = null;
   state.baseCache.clear();
   state.font = null;
@@ -553,7 +546,7 @@ function renderNavigator() {
     ctx.imageSmoothingEnabled = false;
     if (target) {
       const result = state.renderer.renderGlyph(target.group, target.index);
-      drawImageToCanvas(thumb, result.image, 26 / Math.max(result.image.width, result.image.height), true);
+      fitImageToCanvas(thumb, result.image, 26);
       if (result.errors.length) {
         thumb.title = result.errors[0].message;
         slot.classList.add("has-error");
@@ -623,7 +616,19 @@ function imageCanvas(image) {
   return canvas;
 }
 
-function drawImageToCanvas(canvas, image, zoom, nearest = true) {
+function themeImage(image) {
+  if (document.documentElement.dataset.theme !== "dark") return image;
+  const data = image.data.slice();
+  for (let index = 0; index < data.length; index += 4) {
+    if (data[index + 3] === 0) continue;
+    data[index] = 255;
+    data[index + 1] = 255;
+    data[index + 2] = 255;
+  }
+  return { width: image.width, height: image.height, data };
+}
+
+function drawImageToCanvas(canvas, image, zoom, nearest = true, recolor = true) {
   const dpr = globalThis.devicePixelRatio || 1;
   const width = Math.max(1, Math.round(image.width * zoom));
   const height = Math.max(1, Math.round(image.height * zoom));
@@ -635,8 +640,31 @@ function drawImageToCanvas(canvas, image, zoom, nearest = true) {
   ctx.imageSmoothingEnabled = !nearest;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (image.width === 0 || image.height === 0) return ctx;
-  ctx.drawImage(imageCanvas(image), 0, 0, canvas.width, canvas.height);
+  ctx.drawImage(imageCanvas(recolor ? themeImage(image) : image), 0, 0, canvas.width, canvas.height);
   return ctx;
+}
+
+function fitImageToCanvas(canvas, image, box, recolor = true) {
+  const dpr = globalThis.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.round(box * dpr));
+  canvas.height = Math.max(1, Math.round(box * dpr));
+  canvas.style.width = `${box}px`;
+  canvas.style.height = `${box}px`;
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (image.width === 0 || image.height === 0) return ctx;
+  const scale = Math.min(box / image.width, box / image.height);
+  const width = image.width * scale * dpr;
+  const height = image.height * scale * dpr;
+  ctx.drawImage(imageCanvas(recolor ? themeImage(image) : image), (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+  return ctx;
+}
+
+function glyphThumb(image, size = 28) {
+  const canvas = document.createElement("canvas");
+  fitImageToCanvas(canvas, image, size);
+  return canvas;
 }
 
 function drawGrid(ctx, image, zoom) {
@@ -788,7 +816,7 @@ function drawBoard() {
   }
 
   const zoom = Number(state.view.zoom);
-  const ctx = drawImageToCanvas(els.board, display, zoom);
+  const ctx = drawImageToCanvas(els.board, display, zoom, true, !state.view.diff);
   if (state.view.onion && state.currentOnion) {
     const dpr = globalThis.devicePixelRatio || 1;
     const tinted = state.currentOnion.data.slice();
@@ -845,7 +873,7 @@ function drawContext() {
     if (!state.view.diff) els.contextLabel.textContent = t("context.result", { cp: codepointLabel(currentCodepoint() ?? 0) });
   }
   const zoom = Math.max(1, Math.round(Math.min(8, 220 / Math.max(1, display.width, display.height))));
-  const ctx = drawImageToCanvas(els.context, display, zoom);
+  const ctx = drawImageToCanvas(els.context, display, zoom, true, !state.view.diff);
   if (state.view.onion && state.contextOnion) {
     const dpr = globalThis.devicePixelRatio || 1;
     const tinted = state.contextOnion.data.slice();
@@ -887,7 +915,7 @@ function drawShadow(ctx, zoom, target) {
   const char = String.fromCodePoint(cp);
   ctx.save();
   ctx.globalAlpha = clampShadowSettings(state.shadow).opacity;
-  ctx.fillStyle = "#000";
+  ctx.fillStyle = document.documentElement.dataset.theme === "dark" ? "#fff" : "#000";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   ctx.font = `${clampShadowSettings(state.shadow).size * zoom * dpr}px "${state.font.family}"`;
@@ -896,6 +924,21 @@ function drawShadow(ctx, zoom, target) {
 }
 
 // ---------- inspector ----------
+
+function renderChildStrip(group, index) {
+  els.childStrip.replaceChildren();
+  if (!group || index == null) return;
+  const placements = state.workspace.declaration.placement(group.name).get(index) ?? [];
+  const renderer = state.draft ? state.draft.previewRenderer : state.renderer;
+  for (const placement of placements) {
+    const item = el("button", {
+      class: "child-chip",
+      title: `${placement.child}[${placement.childIndex}]`,
+      onclick: () => selectGlyph(placement.child, placement.childIndex, { keepContext: true }),
+    }, glyphThumb(renderer.renderGlyph(placement.child, placement.childIndex).image, 28), `${placement.child}[${placement.childIndex}]`);
+    els.childStrip.append(item);
+  }
+}
 
 function renderGroupInfo() {
   const group = currentGroup();
@@ -906,6 +949,7 @@ function renderGroupInfo() {
   if (!group || !state.selected) {
     els.groupDetail.textContent = t("group.none");
     els.groupIndexControls.hidden = true;
+    els.childStrip.replaceChildren();
     return;
   }
   const index = state.selected.index;
@@ -951,7 +995,11 @@ function renderGroupInfo() {
     );
     if (occurrences.length) {
       for (const occurrence of occurrences) {
-        box.append(el("button", { class: "small", text: `${childName}[${occurrence.childIndex}]`, onclick: () => selectGlyph(childName, occurrence.childIndex, { keepContext: true }) }));
+        const preview = state.renderer.renderGlyph(childName, occurrence.childIndex).image;
+        box.append(el("button", {
+          class: "small child-glyph",
+          onclick: () => selectGlyph(childName, occurrence.childIndex, { keepContext: true }),
+        }, glyphThumb(preview, 20), `${childName}[${occurrence.childIndex}]`));
       }
     } else {
       box.append(el("button", { class: "small", text: t("children.open", { group: childName }), onclick: () => selectGlyph(childName, 0, { keepContext: true }) }));
@@ -967,6 +1015,8 @@ function renderGroupInfo() {
   if (layers.length === 0) {
     els.layerList.append(el("div", { class: "muted", text: t("layers.none") }));
   }
+  renderChildStrip(group, index);
+
   for (const layer of layers) {
     const checkbox = el("input", { type: "checkbox", checked: !state.view.hidden.has(layer.id) });
     checkbox.addEventListener("change", () => {
@@ -1020,9 +1070,9 @@ function renderUsageList(element, codepoints, { unknown = false } = {}) {
   if (page.pageCount > 1) {
     const row = el("div", { class: "row wrap" });
     row.append(
-      el("button", { class: "small", text: t("nav.prev"), disabled: page.page === 0, onclick: () => { state.impactPage[element.id] = page.page - 1; renderImpact(); } }),
+      el("button", { class: "small", text: t("nav.prev"), disabled: page.page === 0, onclick: () => { state.impactPage[element.id] = page.page - 1; renderUsageList(element, codepoints); } }),
       el("span", { class: "muted", text: `${page.page + 1}/${page.pageCount}` }),
-      el("button", { class: "small", text: t("nav.next"), disabled: page.page >= page.pageCount - 1, onclick: () => { state.impactPage[element.id] = page.page + 1; renderImpact(); } }),
+      el("button", { class: "small", text: t("nav.next"), disabled: page.page >= page.pageCount - 1, onclick: () => { state.impactPage[element.id] = page.page + 1; renderUsageList(element, codepoints); } }),
       el("span", { class: "muted", text: query ? t("usage.filtered", { visible: visible.length, total: codepoints.length }) : t("usage.total", { count: codepoints.length }) }),
     );
     element.append(row);
@@ -1031,63 +1081,13 @@ function renderUsageList(element, codepoints, { unknown = false } = {}) {
   }
 }
 
-function renderImpact() {
+function renderStructuralUsages() {
   if (!state.workspace || !state.selected) {
     renderUsageList(els.structuralUsage, null);
-    renderUsageList(els.possibleImpact, null);
-    renderUsageList(els.actualImpact, null);
     return;
   }
   const usages = state.workspace.declaration.usages(state.selected.group, state.selected.index);
   renderUsageList(els.structuralUsage, usages.map((item) => item.codepoint));
-  if (!state.impact) {
-    els.possibleImpact.replaceChildren(el("div", { class: "muted", text: t("impact.none") }));
-    els.actualImpact.replaceChildren(el("div", { class: "muted", text: t("impact.none") }));
-    return;
-  }
-  if (state.impact.pending) {
-    els.possibleImpact.replaceChildren(el("div", { class: "muted", text: t("impact.pending") }));
-    els.actualImpact.replaceChildren(el("div", { class: "muted", text: t("impact.pending") }));
-    return;
-  }
-  renderUsageList(els.possibleImpact, state.impact.candidates);
-  const actualNode = els.actualImpact;
-  actualNode.replaceChildren();
-  if (state.impact.unknown.length) actualNode.append(el("div", { class: "muted", text: t("impact.unknown", { count: state.impact.unknown.length }) }));
-  renderUsageList(actualNode, state.impact.actual);
-}
-
-function computeImpact(revision) {
-  const token = ++state.impactToken;
-  if (!revision || revision.kind === "original") {
-    state.impact = null;
-    renderImpact();
-    return;
-  }
-  state.impact = { pending: true };
-  renderImpact();
-  setTimeout(() => {
-    if (token !== state.impactToken || !state.workspace) return;
-    try {
-      const diff = state.workspace.history.diffFor(revision.id);
-      const rects = new Map();
-      for (const [path, changes] of diff.changes) {
-        const rect = boundsOf(changes);
-        if (rect) rects.set(path, [rect]);
-      }
-      const candidates = affectedCharacters(state.workspace.declaration, state.workspace.assets, rects);
-      const actual = actualChanges(state.workspace.declaration, state.workspace.assets, rects, candidates, diff.before, diff.after);
-      if (token === state.impactToken) {
-        state.impact = { revision: revision.id, candidates, actual: actual.changed, unknown: actual.unknown, pending: false };
-        renderImpact();
-      }
-    } catch (error) {
-      if (token === state.impactToken) {
-        state.impact = { revision: revision.id, candidates: [], actual: [], unknown: [], pending: false, error: error.message };
-        renderImpact();
-      }
-    }
-  }, 0);
 }
 
 // ---------- history ----------
@@ -1116,8 +1116,7 @@ function renderHistory() {
         state.historyPreview = revision.id;
         renderHistory();
         updateToolAvailability();
-        computeImpact(revision);
-        drawBoard();
+            drawBoard();
         drawContext();
       },
     },
@@ -1229,7 +1228,7 @@ function refreshAll() {
   renderSetSelect();
   renderNavigator();
   renderGroupInfo();
-  renderImpact();
+  renderStructuralUsages();
   renderBaseSelects();
   renderHistory();
   drawBoard();
@@ -1310,7 +1309,6 @@ function commitDraft() {
   if (revision) {
     state.renderer.invalidate();
     state.baseCache.clear();
-    computeImpact(revision);
     persist("revision");
   }
   drawBoard();
@@ -1481,7 +1479,6 @@ function useHistory(direction) {
   state.baseCache.clear();
   state.selection = null;
   state.historyPreview = null;
-  computeImpact(state.workspace.history.head);
   drawBoard();
   drawContext();
   renderNavigator();
@@ -1553,8 +1550,7 @@ async function handleImages(files) {
             const revision = state.workspace.history.commit(changes, { kind: "replace" }, { applied: true });
             state.renderer.invalidate();
             state.baseCache.clear();
-            computeImpact(revision);
-            persist("replace");
+                    persist("replace");
             replaced = result.replacements.size;
           }
         }
@@ -1597,8 +1593,7 @@ async function handleManualFile(file) {
       const changes = diffSnapshotToAssets(before, state.workspace.assets);
       if (changes.size) {
         const revision = state.workspace.history.commit(changes, { kind: "replace" }, { applied: true });
-        computeImpact(revision);
-        persist("replace");
+            persist("replace");
       }
     } else {
       await manualLink(state.workspace.declaration, state.workspace.assets, target, bytes);
@@ -1842,7 +1837,7 @@ function bindEvents() {
     input.addEventListener("input", () => {
       state.usageQuery[input.dataset.usageSearch] = input.value;
       state.impactPage = { ...(state.impactPage ?? {}), [input.dataset.usageSearch]: 0 };
-      renderImpact();
+      renderStructuralUsages();
     });
   }
   els.globalSearch.addEventListener("keydown", (event) => {
@@ -1961,8 +1956,7 @@ function bindEvents() {
       state.baseCache.clear();
       state.historyPreview = null;
       state.selection = null;
-      computeImpact(revision);
-      persist("restore");
+        persist("restore");
       refreshAll();
     }
   });
@@ -1985,8 +1979,7 @@ function bindEvents() {
     state.historyPreview = null;
     renderHistory();
     updateToolAvailability();
-    computeImpact(state.workspace.history.head);
-    drawBoard();
+      drawBoard();
     drawContext();
   });
 
