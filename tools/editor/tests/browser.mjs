@@ -11,6 +11,7 @@ import { decodePng, encodePng } from "../src/png.js";
 const REPO_ROOT = resolve(fileURLToPath(new URL("../../../", import.meta.url)));
 const EDITOR_ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 const CHROMIUM = process.env.CHROMIUM_PATH || "/usr/sbin/chromium";
+const FONT = process.env.FONT_PATH || "/usr/share/fonts/TTF/MonoidNerdFont-Regular.ttf";
 const MIME = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -109,6 +110,14 @@ try {
   await page.waitForFunction(() => window.__editor.state.workspace.assets.has("sheet.png"));
   await page.waitForFunction(() => document.querySelector("#save-status").textContent.includes("저장됨"));
 
+  if (existsSync(FONT)) {
+    await (await page.$("#font-file")).uploadFile(FONT);
+    await page.waitForFunction(() => window.__editor.state.font?.hasCodepoint(0x41) === true);
+    assert.equal(await page.$eval("#shadow-toggle", (node) => node.disabled), false);
+    await page.click("#shadow-toggle");
+    assert.equal(await page.evaluate(() => window.__editor.state.shadow.visible), true);
+  }
+
   const board = await page.$("#board");
   const box = await board.boundingBox();
   assert.ok(box.width >= 32 && box.height >= 16);
@@ -140,6 +149,7 @@ try {
     button.click();
   });
   await page.waitForFunction(() => window.__editor?.state.workspace?.history?.revisions.size === 3);
+  if (existsSync(FONT)) await page.waitForFunction(() => window.__editor.state.font?.hasCodepoint(0x41) === true);
   const restored = await page.evaluate(() => ({
     head: window.__editor.state.workspace.history.headId,
     pixels: [...window.__editor.state.workspace.assets.get("sheet.png").current],
