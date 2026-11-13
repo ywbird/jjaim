@@ -165,3 +165,22 @@ export function clampShadowSettings(settings) {
     visible: Boolean(settings.visible),
   };
 }
+
+export function normalizeShadowPresets(value) {
+  if (!Array.isArray(value)) return [];
+  const byName = new Map();
+  for (const raw of value) {
+    if (!raw || typeof raw.name !== "string") continue;
+    const name = raw.name.trim().slice(0, 80);
+    if (!name) continue;
+    const settings = clampShadowSettings(raw);
+    byName.set(name, {
+      name,
+      size: Math.min(256, Math.max(0.25, settings.size)),
+      x: settings.x,
+      y: settings.y,
+      opacity: settings.opacity,
+    });
+  }
+  return [...byName.values()];
+}

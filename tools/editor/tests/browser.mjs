@@ -277,6 +277,24 @@ try {
         sameRow: Math.abs((label.top + label.bottom) / 2 - (slider.top + slider.bottom) / 2) < 1,
       };
     }), { labelBeforeSlider: true, sliderBeforeOutput: true, sameRow: true });
+    await page.type("#shadow-preset-name", "한글 프리셋");
+    await page.click("#save-shadow-preset");
+    assert.equal(await page.$$eval("#shadow-preset-list .shadow-preset-item", (nodes) => nodes.length), 1);
+    assert.equal(await page.$eval(".shadow-preset-apply strong", (node) => node.textContent), "한글 프리셋");
+    await page.$eval("#shadow-size", (node) => {
+      node.value = "48";
+      node.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await page.waitForFunction(() => window.__editor.state.shadow.size === 48);
+    await page.click(".shadow-preset-apply");
+    await page.waitForFunction(() => window.__editor.state.shadow.size === 32);
+    await page.evaluate(() => { window.prompt = () => "Renamed"; });
+    await page.click('[data-shadow-action="rename"]');
+    await page.waitForFunction(() => document.querySelector(".shadow-preset-apply strong").textContent === "Renamed");
+    await page.click('[data-shadow-action="delete"]');
+    await page.waitForFunction(() => document.querySelector("#confirm-dialog").open);
+    await page.click("#confirm-ok");
+    await page.waitForFunction(() => document.querySelectorAll("#shadow-preset-list .shadow-preset-item").length === 0);
     await page.click("#shadow-toggle");
     assert.equal(await page.evaluate(() => window.__editor.state.shadow.visible), true);
     const shadowPixels = await page.$eval("#board", (canvas) => {

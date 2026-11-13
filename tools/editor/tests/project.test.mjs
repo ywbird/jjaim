@@ -48,6 +48,7 @@ function makeWorkspace() {
     assets,
     history,
     view: { zoom: 8, selected: { group: "chars", index: 0, codepoint: 0x41 } },
+    shadowPresets: [{ name: "English", size: 24, x: 2, y: -1, opacity: 0.4 }],
     first,
     second,
   };
@@ -63,6 +64,7 @@ test("project export stores current PNGs with declaration and history", async ()
   assert.equal(raw.format, "dgc-texture-project");
   assert.equal(raw.declaration, workspace.declaration.text);
   assert.equal(raw.history.headId, workspace.history.headId);
+  assert.deepEqual(raw.shadowPresets, workspace.shadowPresets);
 });
 
 test("project import restores current pixels, original pixels, branches, and view", async () => {
@@ -80,6 +82,7 @@ test("project import restores current pixels, original pixels, branches, and vie
   assert.deepEqual([...imported.history.stateAt(workspace.second.id).get("sheet.png")], [0, 0, 0, 0, 255, 0, 0, 255]);
   assert.equal(imported.view.zoom, 8);
   assert.deepEqual(imported.view.selected, { group: "chars", index: 0, codepoint: 0x41 });
+  assert.deepEqual(imported.shadowPresets, workspace.shadowPresets);
 });
 
 test("project import rejects a ZIP without project.json or with wrong metadata", async () => {

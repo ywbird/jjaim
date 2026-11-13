@@ -1,6 +1,7 @@
 import { AssetStore, minimumTextureSizes } from "./assets.js";
 import { parseDeclaration } from "./declaration.js";
 import { History } from "./history.js";
+import { normalizeShadowPresets } from "./font.js";
 
 export const SCHEMA_VERSION = 1;
 const DB_NAME = "declarative-font-editor";
@@ -80,6 +81,7 @@ export function serializeWorkspace(workspace) {
           settings: { ...workspace.font.settings },
         }
       : null,
+    shadowPresets: normalizeShadowPresets(workspace.shadowPresets),
   };
 }
 
@@ -112,6 +114,7 @@ export function deserializeWorkspace(raw) {
     font: raw.font
       ? { ...raw.font, bytes: raw.font.bytes ? new Uint8Array(raw.font.bytes) : null, settings: { ...raw.font.settings } }
       : null,
+    shadowPresets: normalizeShadowPresets(raw.shadowPresets),
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
   };

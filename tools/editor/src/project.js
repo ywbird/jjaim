@@ -1,6 +1,7 @@
 import { AssetStore, minimumTextureSizes, sizeError } from "./assets.js";
 import { parseDeclaration } from "./declaration.js";
 import { History } from "./history.js";
+import { normalizeShadowPresets } from "./font.js";
 import { decodePng, encodePng } from "./png.js";
 import { makeZip, normalizeLogicalPath, readZip } from "./zip.js";
 
@@ -35,6 +36,7 @@ export async function exportProject(workspace) {
     assets,
     history: workspace.history.toJSON(),
     view: workspace.view ?? {},
+    shadowPresets: normalizeShadowPresets(workspace.shadowPresets),
   };
   entries.push({ name: PROJECT_ENTRY, data: new TextEncoder().encode(JSON.stringify(project)) });
   return { name: safeProjectName(workspace.name), bytes: await makeZip(entries), project };
@@ -155,5 +157,6 @@ export async function importProject(bytes) {
     assets,
     history,
     view: raw.view && typeof raw.view === "object" ? raw.view : {},
+    shadowPresets: normalizeShadowPresets(raw.shadowPresets),
   };
 }

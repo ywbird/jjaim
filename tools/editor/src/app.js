@@ -22,7 +22,7 @@ import {
   paginate,
 } from "./unicode-sets.js";
 import { renderText } from "./text.js";
-import { loadFont, clampShadowSettings } from "./font.js";
+import { loadFont, clampShadowSettings, normalizeShadowPresets } from "./font.js";
 import { applyStatic, getLanguage, initLanguage, setLanguage, t } from "./i18n.js";
 import {
   WorkspaceLock,
@@ -199,6 +199,9 @@ const els = {
   shadowYValue: $("#shadow-y-value"),
   shadowOpacity: $("#shadow-opacity"),
   shadowOpacityValue: $("#shadow-opacity-value"),
+  shadowPresetName: $("#shadow-preset-name"),
+  saveShadowPreset: $("#save-shadow-preset"),
+  shadowPresetList: $("#shadow-preset-list"),
   textPreset: $("#text-preset"),
   textInput: $("#text-input"),
   textZoom: $("#text-zoom"),
@@ -438,6 +441,7 @@ function newWorkspace(declaration, text, fileName) {
     history: new History(assets),
     view: defaultView(declaration),
     font: null,
+    shadowPresets: [],
     createdAt: Date.now(),
   };
   if (chosen) state.context = { codepoint: chosen[0], group: chosen[1].group, index: chosen[1].index };
@@ -447,6 +451,7 @@ function newWorkspace(declaration, text, fileName) {
 }
 
 function adoptWorkspace(workspace, { restored = false } = {}) {
+  workspace.shadowPresets = normalizeShadowPresets(workspace.shadowPresets);
   state.workspace = workspace;
   state.renderer = new Renderer(workspace.declaration, workspace.assets);
   state.view = { ...defaultView(workspace.declaration), ...(workspace.view ?? {}) };
@@ -510,6 +515,7 @@ async function openProjectFile(file) {
     workspace.assets = project.assets;
     workspace.history = project.history;
     workspace.view = project.view;
+    workspace.shadowPresets = project.shadowPresets;
     state.workspace = workspace;
     if (state.storage.lock) state.storage.lock.release();
     adoptWorkspace(workspace, { restored: true });
@@ -1543,6 +1549,111 @@ function formatSliderValue(value, unit = "px") {
   return `${Math.round(value * 100) / 100}${unit}`;
 }
 
+function currentShadowPreset(name) {
+  const settings = clampShadowSettings(state.shadow);
+  return {
+    name,
+    size: Math.min(256, settings.size),
+    x: settings.x,
+    y: settings.y,
+    opacity: settings.opacity,
+  };
+}
+
+function applyShadowPreset(preset) {
+  state.shadow = clampShadowSettings({
+    ...state.shadow,
+    size: preset.size,
+    x: preset.x,
+    y: preset.y,
+    opacity: preset.opacity,
+  });
+  if (state.font) state.font.settings = { ...state.shadow };
+  updateFontUi();
+  drawBoard();
+  drawContext();
+  scheduleViewSave("font");
+}
+
+function saveShadowPreset() {
+  if (!state.workspace) return;
+  const name = els.shadowPresetName.value.trim() || t("compare.untitledPreset");
+  const presets = state.workspace.shadowPresets ?? [];
+  const existing = presets.findIndex((preset) => preset.name === name);
+  if (existing < 0 && presets.length >= 32) {
+    els.toolStatus.textContent = t("compare.presetLimit");
+    return;
+  }
+  const preset = currentShadowPreset(name);
+  if (existing >= 0) presets[existing] = preset;
+  else presets.push(preset);
+  state.workspace.shadowPresets = normalizeShadowPresets(presets);
+  els.shadowPresetName.value = "";
+  renderShadowPresets();
+  persist("font");
+}
+
+function renameShadowPreset(preset) {
+  const raw = prompt(t("compare.renamePreset"), preset.name);
+  if (raw == null) return;
+  const name = raw.trim().slice(0, 80);
+  if (!name) return;
+  const presets = state.workspace.shadowPresets ?? [];
+  if (presets.some((item) => item !== preset && item.name === name)) {
+    els.toolStatus.textContent = t("compare.presetNameExists");
+    return;
+  }
+  preset.name = name;
+  state.workspace.shadowPresets = normalizeShadowPresets(presets);
+  renderShadowPresets();
+  persist("font");
+}
+
+async function deleteShadowPreset(preset) {
+  const ok = await confirmAction(t("compare.deletePreset", { name: preset.name }));
+  if (!ok) return;
+  state.workspace.shadowPresets = (state.workspace.shadowPresets ?? []).filter((item) => item !== preset);
+  renderShadowPresets();
+  persist("font");
+}
+
+function renderShadowPresets() {
+  const presets = state.workspace?.shadowPresets ?? [];
+  els.shadowPresetList.replaceChildren();
+  if (presets.length === 0) {
+    els.shadowPresetList.append(el("div", { class: "muted", text: t("compare.noPresets") }));
+    return;
+  }
+  for (const preset of presets) {
+    const apply = el("button", {
+      class: "shadow-preset-apply",
+      type: "button",
+      title: t("compare.applyPreset"),
+      onclick: () => applyShadowPreset(preset),
+    },
+      el("strong", { text: preset.name }),
+      el("small", { text: `${formatSliderValue(preset.size)} · x ${formatSliderValue(preset.x)} · y ${formatSliderValue(preset.y)} · ${formatSliderValue(preset.opacity * 100, "%")}` }),
+    );
+    const rename = el("button", {
+      class: "icon-btn",
+      type: "button",
+      title: t("compare.renamePreset"),
+      "aria-label": t("compare.renamePreset"),
+      "data-shadow-action": "rename",
+      onclick: () => renameShadowPreset(preset),
+    }, icon("pencil"));
+    const remove = el("button", {
+      class: "icon-btn",
+      type: "button",
+      title: t("common.delete"),
+      "aria-label": t("common.delete"),
+      "data-shadow-action": "delete",
+      onclick: () => deleteShadowPreset(preset),
+    }, icon("trash"));
+    els.shadowPresetList.append(el("div", { class: "shadow-preset-item" }, apply, rename, remove));
+  }
+}
+
 function updateFontUi() {
   const range = shadowSliderRange();
   state.shadow.size = Math.min(256, Math.max(0.25, state.shadow.size));
@@ -1564,6 +1675,7 @@ function updateFontUi() {
   els.shadowXValue.textContent = formatSliderValue(state.shadow.x);
   els.shadowYValue.textContent = formatSliderValue(state.shadow.y);
   els.shadowOpacityValue.textContent = formatSliderValue(state.shadow.opacity * 100, "%");
+  renderShadowPresets();
 }
 
 // ---------- editing ----------
@@ -2403,6 +2515,12 @@ function bindEvents() {
       scheduleViewSave("font");
     });
   }
+  els.saveShadowPreset.addEventListener("click", saveShadowPreset);
+  els.shadowPresetName.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    saveShadowPreset();
+  });
   els.shadowToggle.addEventListener("change", () => {
     state.shadow.visible = els.shadowToggle.checked;
     if (state.font) state.font.settings = { ...state.shadow };

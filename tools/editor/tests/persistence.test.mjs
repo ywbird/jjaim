@@ -24,6 +24,7 @@ test("workspace serialization keeps declaration, original pixels, and full histo
     history,
     view: { selected: { group: "g", index: 0 } },
     font: null,
+    shadowPresets: [{ name: "Korean", size: 32, x: 4, y: -2, opacity: 0.5 }],
     createdAt: 1,
   };
   const restored = deserializeWorkspace(serializeWorkspace(workspace));
@@ -32,6 +33,7 @@ test("workspace serialization keeps declaration, original pixels, and full histo
   assert.equal(restored.history.revisions.size, 2);
   assert.deepEqual([...restored.assets.get("sheet.png").current], [0, 0, 0, 255]);
   assert.deepEqual([...restored.assets.get("sheet.png").original], [0, 0, 0, 0]);
+  assert.deepEqual(restored.shadowPresets, [{ name: "Korean", size: 32, x: 4, y: -2, opacity: 0.5 }]);
   assert.throws(() => deserializeWorkspace({ schemaVersion: 99 }), /스키마/);
 });
 
