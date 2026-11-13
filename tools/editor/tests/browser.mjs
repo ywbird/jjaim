@@ -87,6 +87,7 @@ try {
     args: ["--no-sandbox", "--disable-dev-shm-usage"],
   });
   const page = await browser.newPage();
+  await page.setViewport({ width: 1280, height: 720 });
   const origin = new URL(base).origin;
   page.on("request", (request) => {
     const url = request.url();

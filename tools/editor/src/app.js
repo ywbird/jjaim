@@ -69,6 +69,7 @@ const state = {
   historyPreview: null,
   impact: null,
   impactToken: 0,
+  usageQuery: {},
   font: null,
   shadow: { visible: false, size: 16, x: 0, y: 0, opacity: 0.25 },
   linkTarget: null,
@@ -367,7 +368,7 @@ async function persist(reason = "edit") {
   };
   state.workspace.font = state.font
     ? { name: state.font.name, family: state.font.family, bytes: state.font.bytes, settings: { ...state.shadow } }
-    : null;
+    : state.workspace.font ?? null;
   setStatus("저장 중…", "saving");
   try {
     await saveWorkspace(state.workspace);
@@ -721,7 +722,8 @@ function drawContext() {
     els.context.height = 1;
     return;
   }
-  const result = activeRenderer().renderGlyph(target.group, target.index);
+  const renderer = state.draft ? state.draft.previewRenderer : activeRenderer();
+  const result = renderer.renderGlyph(target.group, target.index);
   let display = result.image;
   state.contextOnion = null;
   if (state.view.diff) {
@@ -758,7 +760,7 @@ function drawContext() {
     const cp = currentCodepoint();
     els.contextLabel.textContent = cp == null ? "결과 문맥 없음" : `${codepointLabel(cp)} → ${target.group}[${target.index}]`;
   }
-  if (result.errors.length) els.toolStatus.textContent = result.errors[0].message;
+  if (result.errors.length) els.contextLabel.textContent = `결과 오류: ${result.errors[0].message}`;
 }
 
 function drawShadow(ctx, zoom, target) {
@@ -839,7 +841,7 @@ function renderGroupInfo() {
       el("div", { class: "muted", text: occurrences.length ? `현재 인덱스 배치 ${occurrences.length}건 · 임포트 ${imports.join(", ")}` : "현재 글리프에는 배치 없음" }),
     );
     if (occurrences.length) {
-      for (const occurrence of occurrences.slice(0, 8)) {
+      for (const occurrence of occurrences) {
         box.append(el("button", { class: "small", text: `${childName}[${occurrence.childIndex}]`, onclick: () => selectGlyph(childName, occurrence.childIndex, { keepContext: true }) }));
       }
     } else {
@@ -881,11 +883,19 @@ function renderUsageList(element, codepoints, { unknown = false } = {}) {
     element.append(el("div", { class: "muted", text: "선택 없음" }));
     return;
   }
-  if (codepoints.length === 0) {
-    element.append(el("div", { class: "muted", text: "없음" }));
+  const query = (state.usageQuery[element.id] ?? "").trim().toLowerCase();
+  const visible = query
+    ? codepoints.filter((item) => {
+      const cp = typeof item === "number" ? item : item.codepoint;
+      const target = state.workspace.declaration.unicodeMap.get(cp);
+      return codepointLabel(cp).toLowerCase().includes(query) || String.fromCodePoint(cp).includes(query) || (target && `${target.group}[${target.index}]`.toLowerCase().includes(query));
+    })
+    : codepoints;
+  if (visible.length === 0) {
+    element.append(el("div", { class: "muted", text: codepoints.length ? "검색 결과 없음" : "없음" }));
     return;
   }
-  const page = paginate(codepoints, state.impactPage?.[element.id] ?? 0, 64);
+  const page = paginate(visible, state.impactPage?.[element.id] ?? 0, 64);
   state.impactPage = { ...(state.impactPage ?? {}), [element.id]: page.page };
   for (const item of page.items) {
     const cp = typeof item === "number" ? item : item.codepoint;
@@ -901,11 +911,11 @@ function renderUsageList(element, codepoints, { unknown = false } = {}) {
       el("button", { class: "small", text: "이전", disabled: page.page === 0, onclick: () => { state.impactPage[element.id] = page.page - 1; renderImpact(); } }),
       el("span", { class: "muted", text: `${page.page + 1}/${page.pageCount}` }),
       el("button", { class: "small", text: "다음", disabled: page.page >= page.pageCount - 1, onclick: () => { state.impactPage[element.id] = page.page + 1; renderImpact(); } }),
-      el("span", { class: "muted", text: `전체 ${codepoints.length}` }),
+      el("span", { class: "muted", text: query ? `검색 ${visible.length} / 전체 ${codepoints.length}` : `전체 ${codepoints.length}` }),
     );
     element.append(row);
   } else {
-    element.append(el("div", { class: "muted", text: `전체 ${codepoints.length}` }));
+    element.append(el("div", { class: "muted", text: query ? `검색 ${visible.length} / 전체 ${codepoints.length}` : `전체 ${codepoints.length}` }));
   }
 }
 
@@ -954,7 +964,7 @@ function computeImpact(revision) {
         if (rect) rects.set(path, [rect]);
       }
       const candidates = affectedCharacters(state.workspace.declaration, state.workspace.assets, rects);
-      const actual = actualChanges(state.workspace.declaration, state.workspace.assets, rects, candidates, diff.before);
+      const actual = actualChanges(state.workspace.declaration, state.workspace.assets, rects, candidates, diff.before, diff.after);
       if (token === state.impactToken) {
         state.impact = { revision: revision.id, candidates, actual: actual.changed, unknown: actual.unknown, pending: false };
         renderImpact();
@@ -993,6 +1003,8 @@ function renderHistory() {
       onclick: () => {
         state.historyPreview = revision.id;
         renderHistory();
+        updateToolAvailability();
+        computeImpact(revision);
         drawBoard();
         drawContext();
       },
@@ -1043,7 +1055,9 @@ let textTimer = null;
 function drawTextPreview() {
   if (!state.workspace) return;
   try {
-    const result = renderText(state.workspace.declaration, state.renderer, els.textInput.value);
+    const draftRenderer = state.draft?.previewRenderer;
+    if (state.draft) state.draft.previewAssets.get(state.draft.path).current = state.draft.draft.data;
+    const result = renderText(state.workspace.declaration, draftRenderer ?? state.renderer, els.textInput.value);
     const scaled = scaleImage(result.image, Number(state.view.textZoom));
     drawImageToCanvas(els.textPreview, scaled, 1, true);
     els.textStatus.textContent = result.hasMappings
@@ -1275,6 +1289,7 @@ function pointerMove(event) {
     );
     state.drag.last = point;
     drawBoard();
+    drawContext();
     scheduleTextPreview();
   } else if (state.drag.kind === "select") {
     const group = currentGroup();
@@ -1295,6 +1310,8 @@ function pointerMove(event) {
     state.drag.dx = moved.dx;
     state.drag.dy = moved.dy;
     drawBoard();
+    drawContext();
+    scheduleTextPreview();
   }
 }
 
@@ -1365,7 +1382,7 @@ function renderSourceTable() {
   const rows = sourceRows(state.workspace.declaration, state.workspace.assets);
   const table = el("table");
   const header = el("tr");
-  for (const label of ["셋", "소스", "선언 경로", "연결", "크기", "상태"]) header.append(el("th", { text: label }));
+  for (const label of ["셋", "소스", "선언 경로", "연결", "파일", "크기", "상태"]) header.append(el("th", { text: label }));
   table.append(el("thead", {}, header));
   const body = el("tbody");
   for (const row of rows) {
@@ -1376,6 +1393,7 @@ function renderSourceTable() {
       el("td", { text: row.source }),
       el("td", { text: row.declaredPath }),
       el("td", {}, pick),
+      el("td", { text: row.asset?.path ?? "—" }),
       el("td", { text: row.asset ? `${row.asset.width}×${row.asset.height}` : "—" }),
       el("td", { class: row.error ? "error" : "", text: row.error ?? row.status }),
     );
@@ -1637,8 +1655,15 @@ function bindEvents() {
   els.pageLast.addEventListener("click", () => { state.set.page = 1e9; renderNavigator(); });
   els.pageInput.addEventListener("change", () => { state.set.page = Math.max(0, Number(els.pageInput.value) - 1); renderNavigator(); });
   els.groupSearch.addEventListener("input", renderNavigator);
+  for (const input of document.querySelectorAll("[data-usage-search]")) {
+    input.addEventListener("input", () => {
+      state.usageQuery[input.dataset.usageSearch] = input.value;
+      state.impactPage = { ...(state.impactPage ?? {}), [input.dataset.usageSearch]: 0 };
+      renderImpact();
+    });
+  }
   els.globalSearch.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter") return;
+    if (event.key !== "Enter" || !state.workspace) return;
     const found = findGroupGlyphByText(state.workspace.declaration, els.globalSearch.value);
     if (found?.error) {
       els.globalError.textContent = found.error;
@@ -1773,6 +1798,8 @@ function bindEvents() {
   els.clearPreview.addEventListener("click", () => {
     state.historyPreview = null;
     renderHistory();
+    updateToolAvailability();
+    computeImpact(state.workspace.history.head);
     drawBoard();
     drawContext();
   });
@@ -1861,6 +1888,7 @@ function boardKeydown(event) {
     return;
   }
   if (["b", "e", "s", "v"].includes(key.toLowerCase()) && !ctrl) {
+    cancelDraft();
     state.view.tool = { b: "pencil", e: "eraser", s: "select", v: "move" }[key.toLowerCase()];
     for (const button of document.querySelectorAll("[data-tool]")) button.classList.toggle("active", button.dataset.tool === state.view.tool);
     drawBoard();
