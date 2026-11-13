@@ -775,9 +775,9 @@ function fitImageToCanvas(canvas, image, box, recolor = true, smooth = state.ant
   return ctx;
 }
 
-function glyphThumb(image, size = 28) {
+function glyphThumb(image, size = 28, smooth = state.antialias) {
   const canvas = document.createElement("canvas");
-  fitImageToCanvas(canvas, image, size);
+  fitImageToCanvas(canvas, image, size, true, smooth);
   return canvas;
 }
 
@@ -1001,7 +1001,7 @@ function drawContext() {
     if (!state.view.diff) els.contextLabel.textContent = t("context.result", { cp: codepointLabel(currentCodepoint() ?? 0) });
   }
   const zoom = Math.max(1, Math.round(Math.min(10, 220 / Math.max(1, display.width, display.height))));
-  const ctx = drawImageToCanvas(els.context, display, zoom, !state.antialias, !state.view.diff);
+  const ctx = drawImageToCanvas(els.context, display, zoom, true, !state.view.diff);
   if (state.view.onion && state.contextOnion) {
     const dpr = globalThis.devicePixelRatio || 1;
     const tinted = state.contextOnion.data.slice();
@@ -1099,7 +1099,7 @@ function renderChildStrip(group, index) {
           selectGlyph(placement.group, placement.index);
         },
       }, icon("arrow-up-right")),
-      glyphThumb(renderer.renderGlyph(placement.group, placement.index).image, box),
+      glyphThumb(renderer.renderGlyph(placement.group, placement.index).image, box, false),
       `${placement.group}[${placement.index}]`,
     );
     els.childStrip.append(tile);

@@ -155,16 +155,20 @@ try {
   assert.equal(await page.$eval("#settings-language", (node) => node.value), "ko");
   assert.equal(await page.$eval("#settings-antialias", (node) => node.checked), true);
   assert.equal(await page.$eval(".char-slot canvas", (node) => getComputedStyle(node).imageRendering), "auto");
+  assert.equal(await page.$eval("#context", (node) => getComputedStyle(node).imageRendering), "pixelated");
+  const contextBefore = await page.$eval("#context", (canvas) => canvas.toDataURL());
   const aaBefore = await page.$eval('[data-codepoint="65"] canvas', (canvas) => canvas.toDataURL());
   await page.click("#settings-antialias");
   await page.waitForFunction(() => document.documentElement.dataset.antialias === "off");
   assert.equal(await page.$eval(".char-slot canvas", (node) => getComputedStyle(node).imageRendering), "pixelated");
   assert.equal(await page.evaluate(() => localStorage.getItem("declarative-font-editor-antialias")), "false");
+  assert.equal(await page.$eval("#context", (canvas) => canvas.toDataURL()), contextBefore);
   const aaOff = await page.$eval('[data-codepoint="65"] canvas', (canvas) => canvas.toDataURL());
   assert.notEqual(aaOff, aaBefore);
   await page.click("#settings-antialias");
   await page.waitForFunction(() => document.documentElement.dataset.antialias === "on");
   assert.equal(await page.$eval(".char-slot canvas", (node) => getComputedStyle(node).imageRendering), "auto");
+  assert.equal(await page.$eval("#context", (canvas) => canvas.toDataURL()), contextBefore);
   await page.select("#settings-language", "en");
   await page.waitForFunction(() => document.documentElement.lang === "en");
   await page.select("#settings-language", "ko");
@@ -368,6 +372,7 @@ try {
   const contextBox = await page.$eval("#context", (canvas) => Math.max(canvas.clientWidth, canvas.clientHeight));
   const tileBox = await page.$eval("#child-strip .child-chip canvas", (canvas) => Math.max(canvas.clientWidth, canvas.clientHeight));
   assert.equal(tileBox, contextBox);
+  assert.equal(await page.$eval("#child-strip .child-chip canvas", (canvas) => getComputedStyle(canvas).imageRendering), "pixelated");
   const beforeToggleBoard = await page.$eval("#board", (canvas) => canvas.toDataURL());
   const hiddenBefore = await page.evaluate(() => window.__editor.state.view.hidden.size);
   await page.click("#child-strip .child-chip");

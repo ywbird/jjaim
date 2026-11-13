@@ -685,9 +685,7 @@ dialog::backdrop { background: rgba(16, 20, 26, 0.5); }
 }
 html[data-antialias="off"] #text-preview { image-rendering: pixelated; }
 html[data-antialias="on"] .char-slot canvas,
-html[data-antialias="on"] .child-chip canvas,
-html[data-antialias="on"] .group-glyph-tile canvas,
-html[data-antialias="on"] #context { image-rendering: auto; }
+html[data-antialias="on"] .group-glyph-tile canvas { image-rendering: auto; }
 .text-preview-hint { margin: 5px 0 0; font-size: 10.5px; color: var(--muted); }
 .text-preview-frame {
   margin-top: 10px;
