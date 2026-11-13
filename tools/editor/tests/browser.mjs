@@ -156,6 +156,7 @@ try {
   assert.equal(await page.evaluate(() => document.querySelector("#navigator").contains(document.querySelector("#group-list"))), true);
   assert.equal(await page.evaluate(() => document.querySelector("#inspector").contains(document.querySelector("#group-glyph-grid"))), true);
   assert.equal(await page.evaluate(() => document.querySelector("#navigator").contains(document.querySelector("#text-preview"))), true);
+  assert.equal(await page.evaluate(() => document.querySelector("#group-glyph-section").previousElementSibling?.id), "group-index-controls");
   assert.equal(await page.evaluate(() => Boolean(document.querySelector("#group-glyph-grid").compareDocumentPosition(document.querySelector("#child-info")) & Node.DOCUMENT_POSITION_FOLLOWING)), true);
   await page.click("#toggle-group-grid");
   assert.equal(await page.$eval("#group-glyph-grid", (node) => node.hidden), true);
