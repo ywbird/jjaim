@@ -94,6 +94,19 @@ test('the public guide metadata and static deployment target the Pages subpath',
   }
 });
 
+test('the introduction links the accessible official AI:X logo at 64 pixels', () => {
+  const intro = html.match(/<section id="overview"[\s\S]*?<\/section>/);
+  assert.ok(intro, 'Keep the AI disclosure in the introduction');
+  const badge = intro[0].match(/<a class="ai-disclosure"[^>]*>[\s\S]*?<\/a>/);
+  assert.ok(badge, 'The logo must be a link, not a decorative image');
+  assert.match(badge[0], /href="https:\/\/0rwx\.com\/"/);
+  assert.match(badge[0], /src="docs\/assets\/AI-X-light\.svg"/);
+  assert.match(badge[0], /alt="AI:X — AI가 만든 프로젝트 \(0rwx\)"/);
+  assert.match(badge[0], /width="64"/);
+  assert.match(badge[0], /height="64"/);
+  assert.match(css, /color-scheme:\s*light\s*;/, 'Use the dark-ink logo on this light-only page');
+});
+
 test('source documentation links use rendered Markdown with chapter anchors', () => {
   const specUrl = `${sourceUrl}SPEC.md`;
   assert.ok(html.includes(`href="${specUrl}"`));

@@ -60,6 +60,9 @@ p:last-child { margin-bottom: 0; }
 .mobile-contents { display: none; }
 .document-meta { display: flex; justify-content: space-between; align-items: center; gap: 16px; font-size: 13px; color: var(--muted); margin-bottom: 28px; }
 .document-meta > span:first-child { color: var(--accent); font-weight: 600; }
+.document-meta-end { display: flex; align-items: center; gap: 16px; }
+.ai-disclosure { display: block; flex-shrink: 0; }
+.ai-disclosure img { display: block; width: 64px; height: 64px; }
 h1 { font-family: var(--serif); font-size: clamp(36px, 3.7vw, 56px); font-weight: 500; line-height: 1.36; letter-spacing: -.07em; margin: 0 0 24px; }
 .intro-lead { font-size: 20px; line-height: 1.7; letter-spacing: -.025em; margin-bottom: 20px; }
 .intro-copy { font-size: 15px; max-width: 660px; line-height: 1.9; }
