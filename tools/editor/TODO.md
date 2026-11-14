@@ -10,6 +10,8 @@
 
 ## 피드백
 
+- [x] 현재 폰트 섀도가 글리프 박스 밖으로 나가면 trim되는데, 글리프 박스 바깥으로 나가도 trim 되지 않도록 — `c4f8157`, outside-overlay browser pixel test
+
 - [x] 이전 작업 2개에서 생긴 ui 텍스트가 전부 제대로 안나와. menu.newProject 이런식으로. — `23e5051`, i18n fallback + no-raw-key browser test
 - [x] 임의 크기의 한글/ascii 선언 생성하기 말고, 그냥 크기 직접 정하기 같은 버튼으로 generate_declaration.py 로직을 가져와서 한글/ascii 임의 크기 선언을 생성해. — `23e5051`, 5x11 custom-size browser test
 
