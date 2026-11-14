@@ -124,6 +124,27 @@ export class PixelDraft {
   }
 }
 
+export function shiftPixels(width, height, data, dx, dy) {
+  const shifted = new Uint8Array(data.length);
+  if (dx === 0 && dy === 0) return data.slice();
+  const copyWidth = Math.max(0, width - Math.abs(dx));
+  const sourceX = Math.max(0, -dx);
+  const destX = Math.max(0, dx);
+  for (let y = 0; y < height; y += 1) {
+    const sourceY = y - dy;
+    if (sourceY < 0 || sourceY >= height) continue;
+    for (let x = 0; x < copyWidth; x += 1) {
+      const source = (sourceY * width + sourceX + x) * 4;
+      const dest = (y * width + destX + x) * 4;
+      shifted[dest] = data[source];
+      shifted[dest + 1] = data[source + 1];
+      shifted[dest + 2] = data[source + 2];
+      shifted[dest + 3] = data[source + 3];
+    }
+  }
+  return shifted;
+}
+
 export function boundsOf(changes) {
   if (changes.length === 0) return null;
   let minX = Infinity;

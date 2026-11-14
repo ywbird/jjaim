@@ -696,6 +696,76 @@ try {
     return { width: clipboard.width, height: clipboard.height };
   }), { width: 2, height: 2 });
 
+  const beforeShift = await presetPage.evaluate(() => {
+    const workspace = window.__editor.state.workspace;
+    const sample = (path, x, y) => {
+      const asset = workspace.assets.get(path);
+      const offset = (y * asset.width + x) * 4;
+      return [...asset.current.slice(offset, offset + 4)];
+    };
+    const hash = (data) => {
+      let value = 2166136261;
+      for (const byte of data) {
+        value ^= byte;
+        value = Math.imul(value, 16777619);
+      }
+      return value >>> 0;
+    };
+    return {
+      head: workspace.history.headId,
+      revisions: workspace.history.revisions.size,
+      assets: workspace.assets.paths(),
+      sample: sample("hangul.png", 1, 0),
+      asciiHash: hash(workspace.assets.get("ascii.png").current),
+      hangulHash: hash(workspace.assets.get("hangul.png").current),
+    };
+  });
+  assert.equal(await presetPage.$eval("#shadow-presets", (node) => node.nextElementSibling?.id), "shift-panel");
+  await presetPage.$eval("#shift-x", (node) => { node.value = "-1"; });
+  await presetPage.$eval("#shift-y", (node) => { node.value = "1"; });
+  await presetPage.click("#shift-textures");
+  await presetPage.waitForFunction(() => document.querySelector("#confirm-dialog").open);
+  assert.match(await presetPage.$eval("#confirm-message", (node) => node.textContent), /x -1, y 1/);
+  await presetPage.click('#confirm-dialog button[value="cancel"]');
+  await presetPage.waitForFunction(() => !document.querySelector("#confirm-dialog").open);
+  assert.equal(await presetPage.evaluate(() => window.__editor.state.workspace.history.headId), beforeShift.head);
+  await presetPage.click("#shift-textures");
+  await presetPage.waitForFunction(() => document.querySelector("#confirm-dialog").open);
+  await presetPage.click("#confirm-ok");
+  await presetPage.waitForFunction((head) => window.__editor.state.workspace.history.headId !== head, {}, beforeShift.head);
+  const shifted = await presetPage.evaluate((previous) => {
+    const workspace = window.__editor.state.workspace;
+    const revision = workspace.history.head;
+    const hangul = workspace.assets.get("hangul.png");
+    const ascii = workspace.assets.get("ascii.png");
+    const offset = (1 * hangul.width + 0) * 4;
+    const hash = (data) => {
+      let value = 2166136261;
+      for (const byte of data) {
+        value ^= byte;
+        value = Math.imul(value, 16777619);
+      }
+      return value >>> 0;
+    };
+    return {
+      kind: revision.kind,
+      note: revision.note,
+      paths: [...revision.changes.keys()].sort(),
+      revisions: workspace.history.revisions.size,
+      hangulSample: [...hangul.current.slice(offset, offset + 4)],
+      asciiHash: hash(ascii.current),
+      hangulHash: hash(hangul.current),
+      previous,
+    };
+  }, beforeShift);
+  assert.equal(shifted.kind, "shift");
+  assert.equal(shifted.note, "x -1, y 1");
+  assert.deepEqual(shifted.paths, beforeShift.assets);
+  assert.equal(shifted.revisions, beforeShift.revisions + 1);
+  assert.deepEqual(shifted.hangulSample, beforeShift.sample);
+  assert.notEqual(shifted.asciiHash, beforeShift.asciiHash);
+  assert.notEqual(shifted.hangulHash, beforeShift.hangulHash);
+
   await presetPage.click("#file-menu-button");
   await presetPage.click("#new-project");
   await presetPage.waitForFunction(() => window.__editor.state.workspace === null);

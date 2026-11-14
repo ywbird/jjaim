@@ -708,6 +708,10 @@ dialog::backdrop { background: rgba(16, 20, 26, 0.5); }
 .shadow-preset-apply small { color: var(--muted); font-family: var(--font-mono); font-size: 9px; white-space: nowrap; }
 .shadow-preset-item .icon-btn { width: 24px; height: 24px; min-height: 24px; }
 .shadow-preset-item .icon-btn .icon { width: 14px; height: 14px; }
+.shift-panel { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--border); }
+.shift-panel h3 { margin: 0 0 5px; }
+.shift-panel input[type="number"] { width: 64px; }
+.shift-panel .muted { margin: 6px 0 0; font-size: 10.5px; line-height: 1.45; }
 .settings-field { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
 .settings-field > label { color: var(--muted); font-size: 12px; }
 .settings-field > select { width: 100%; }

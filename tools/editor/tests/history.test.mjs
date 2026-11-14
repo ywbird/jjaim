@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { AssetStore } from "../src/assets.js";
 import { History } from "../src/history.js";
-import { PixelDraft } from "../src/pixels.js";
+import { PixelDraft, shiftPixels } from "../src/pixels.js";
 
 const black = [0, 0, 0, 255];
 const clear = [0, 0, 0, 0];
@@ -23,6 +23,18 @@ test("pixel draft applies pencil, eraser, and interpolated lines as one change s
   assert.deepEqual(changes.map((c) => c.x), [0, 1, 3]);
   assert.deepEqual(changes[0].after, black);
   assert.equal(assets.get("sheet.png").current[0], 0);
+});
+
+test("texture shift keeps in-bounds pixels and trims the vacated edges", () => {
+  const data = Uint8Array.from([
+    1, 0, 0, 255, 2, 0, 0, 255, 3, 0, 0, 255,
+    4, 0, 0, 255, 5, 0, 0, 255, 6, 0, 0, 255,
+  ]);
+  const firstChannel = (result) => [0, 1, 2, 3, 4, 5].map((pixel) => result[pixel * 4]);
+  assert.deepEqual(firstChannel(shiftPixels(3, 2, data, 1, 0)), [0, 1, 2, 0, 4, 5]);
+  assert.deepEqual(firstChannel(shiftPixels(3, 2, data, -1, 1)), [0, 0, 0, 2, 3, 0]);
+  assert.deepEqual(firstChannel(shiftPixels(3, 2, data, 3, 0)), [0, 0, 0, 0, 0, 0]);
+  assert.deepEqual(firstChannel(shiftPixels(3, 2, data, 0, 0)), [1, 2, 3, 4, 5, 6]);
 });
 
 test("selection move uses a snapshot, overwrites transparency, and trims outside the glyph", () => {

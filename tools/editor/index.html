@@ -183,6 +183,17 @@
             </div>
             <div id="shadow-preset-list" class="list"></div>
           </div>
+          <div id="shift-panel" class="shift-panel">
+            <h3 data-i18n="shift.title">텍스처 움직이기</h3>
+            <div class="row wrap">
+              <label for="shift-x">x</label>
+              <input id="shift-x" type="number" step="1" value="0">
+              <label for="shift-y">y</label>
+              <input id="shift-y" type="number" step="1" value="0">
+              <button id="shift-textures" class="small" data-i18n="shift.apply">이동</button>
+            </div>
+            <p class="muted" data-i18n="shift.note">모든 텍스처를 같은 픽셀만큼 이동합니다. 범위를 벗어난 픽셀은 잘립니다.</p>
+          </div>
         </section>
       </aside>
 

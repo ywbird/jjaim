@@ -7,7 +7,7 @@ import {
   diffImages,
 } from "./compose.js";
 import { History } from "./history.js";
-import { PixelDraft, ERASER, PENCIL, diffSnapshotToAssets } from "./pixels.js";
+import { PixelDraft, ERASER, PENCIL, diffSnapshotToAssets, shiftPixels } from "./pixels.js";
 import { importImages, manualLink, replaceAssets } from "./importer.js";
 import { exportAll, exportChanged, exportSingle } from "./exporter.js";
 import { exportProject, importProject } from "./project.js";
@@ -222,6 +222,9 @@ const els = {
   shadowPresetName: $("#shadow-preset-name"),
   saveShadowPreset: $("#save-shadow-preset"),
   shadowPresetList: $("#shadow-preset-list"),
+  shiftX: $("#shift-x"),
+  shiftY: $("#shift-y"),
+  shiftTextures: $("#shift-textures"),
   textPreset: $("#text-preset"),
   textInput: $("#text-input"),
   textZoom: $("#text-zoom"),
@@ -1752,6 +1755,8 @@ function updateToolAvailability() {
   const copyable = Boolean(ownInfo()?.ok) && !previewId() && !state.view.ownHidden;
   els.copySelection.disabled = !copyable;
   els.pasteSelection.disabled = !textureEditable || !state.clipboard || state.view.ownHidden;
+  const shiftable = Boolean(state.workspace) && !state.storage.readOnly && !state.storage.blocked && state.workspace.assets.paths().length > 0;
+  els.shiftTextures.disabled = !shiftable;
 }
 
 function refreshAll() {
@@ -1922,6 +1927,49 @@ function renderShadowPresets() {
     }, icon("trash"));
     els.shadowPresetList.append(el("div", { class: "shadow-preset-item" }, apply, rename, remove));
   }
+}
+
+async function shiftAllTextures() {
+  if (!state.workspace || !ensureEditable()) return;
+  const dx = Number(els.shiftX.value);
+  const dy = Number(els.shiftY.value);
+  if (!Number.isInteger(dx) || !Number.isInteger(dy)) {
+    els.toolStatus.textContent = t("shift.invalid");
+    return;
+  }
+  if (dx === 0 && dy === 0) {
+    els.toolStatus.textContent = t("shift.noOffset");
+    return;
+  }
+  const assets = state.workspace.assets;
+  const paths = assets.paths();
+  if (paths.length === 0) {
+    els.toolStatus.textContent = t("shift.noTextures");
+    return;
+  }
+  const ok = await confirmAction(t("shift.confirm", { count: paths.length, x: dx, y: dy }));
+  if (!ok) return;
+  cancelDraft();
+  const before = assets.snapshot();
+  for (const path of paths) {
+    const asset = assets.get(path);
+    asset.current = shiftPixels(asset.width, asset.height, asset.current, dx, dy);
+    asset.version += 1;
+  }
+  state.renderer.invalidate();
+  state.baseCache.clear();
+  const changes = diffSnapshotToAssets(before, assets);
+  if (changes.size === 0) {
+    assets.restore(before);
+    state.renderer.invalidate();
+    state.baseCache.clear();
+    refreshAll();
+    els.toolStatus.textContent = t("shift.unchanged");
+    return;
+  }
+  state.workspace.history.commit(changes, { kind: "shift", note: `x ${dx}, y ${dy}` }, { applied: true });
+  persist("revision");
+  refreshAll();
 }
 
 function updateFontUi() {
@@ -2792,6 +2840,7 @@ function bindEvents() {
     });
   }
   els.saveShadowPreset.addEventListener("click", saveShadowPreset);
+  els.shiftTextures.addEventListener("click", shiftAllTextures);
   els.shadowPresetName.addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return;
     event.preventDefault();
