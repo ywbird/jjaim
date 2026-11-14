@@ -531,7 +531,11 @@ try {
   await presetPage.click("#open-presets");
   await presetPage.waitForFunction(() => document.querySelector("#preset-dialog").open);
   assert.equal(await presetPage.$$eval("[data-preset-kind]", (nodes) => nodes.length), 2);
+  assert.equal(await presetPage.$eval("#preset-ascii-preview", (image) => image.getAttribute("src")), "presets/fonts/E1.png");
+  await presetPage.waitForFunction(() => document.querySelector("#preset-ascii-preview").naturalWidth > 0);
+  assert.equal(await presetPage.$eval(".preset-generator-link", (link) => link.getAttribute("href")), "../generate_declaration.py");
   await presetPage.select("#preset-ascii-font", "E2.png");
+  await presetPage.waitForFunction(() => document.querySelector("#preset-ascii-preview").dataset.file === "E2.png");
   await presetPage.click("#preset-load");
   await presetPage.waitForFunction(() => window.__editor.state.workspace?.fileName === "ascii.json" && window.__editor.state.workspace.assets.has("ascii.png"));
   assert.equal(await presetPage.evaluate(() => window.__editor.state.workspace.declaration.unicodeMap.size), 95);
@@ -543,6 +547,7 @@ try {
   await presetPage.click('[data-preset-kind="hangul"]');
   await presetPage.select("#preset-hangul-english", "E3.png");
   await presetPage.select("#preset-hangul-korean", "H03.png");
+  await presetPage.waitForFunction(() => document.querySelector("#preset-hangul-english-preview").naturalWidth === 128 && document.querySelector("#preset-hangul-korean-preview").naturalWidth === 432);
   await presetPage.click("#preset-load");
   await presetPage.waitForFunction(() => window.__editor.state.workspace?.fileName === "hangul.json" && window.__editor.state.workspace.assets.has("hangul.png"));
   assert.equal(await presetPage.evaluate(() => window.__editor.state.workspace.declaration.unicodeMap.size), 11267);
@@ -589,6 +594,14 @@ try {
     return { width: clipboard.width, height: clipboard.height };
   }), { width: 2, height: 2 });
 
+  await presetPage.click("#file-menu-button");
+  await presetPage.click("#new-project");
+  await presetPage.waitForFunction(() => window.__editor.state.workspace === null);
+  assert.equal(await presetPage.$eval("#editor", (node) => node.hidden), true);
+  assert.equal(await presetPage.evaluate(() => document.querySelector("#empty-state").hidden), false);
+  await presetPage.click("#empty-open-works");
+  await presetPage.waitForFunction(() => document.querySelectorAll("#works-list .list-item").length > 0);
+  await presetPage.click("#works-close");
   assert.deepEqual(presetErrors, []);
   await presetPage.close();
 

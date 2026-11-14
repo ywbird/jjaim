@@ -60,6 +60,7 @@
           <button id="file-menu-button" class="icon-btn" data-i18n-title="menu.title" aria-label="불러오기/내보내기"><svg class="icon"><use href="#i-menu"/></svg></button>
           <div id="file-menu" class="menu" hidden>
             <div class="menu-label" data-i18n="menu.groupOpen">열기</div>
+            <button id="new-project" class="menu-item" data-i18n="menu.newProject">새 프로젝트</button>
             <button id="open-declaration" class="menu-item" data-i18n="menu.openDeclaration">선언 열기</button>
             <button id="open-presets" class="menu-item" data-i18n="menu.presets">프리셋</button>
             <button id="open-project" class="menu-item" data-i18n="menu.openProject">프로젝트 열기 (.jjaim)</button>
@@ -368,14 +369,24 @@
         <p id="preset-meta" class="muted"></p>
         <div id="preset-ascii-fields" class="preset-fields">
           <label for="preset-ascii-font" data-i18n="presets.englishTexture">영문 텍스처</label>
-          <select id="preset-ascii-font"></select>
+          <div class="preset-texture-row">
+            <select id="preset-ascii-font"></select>
+            <img id="preset-ascii-preview" class="preset-texture-preview" alt="">
+          </div>
         </div>
         <div id="preset-hangul-fields" class="preset-fields" hidden>
           <label for="preset-hangul-english" data-i18n="presets.englishTexture">영문 텍스처</label>
-          <select id="preset-hangul-english"></select>
+          <div class="preset-texture-row">
+            <select id="preset-hangul-english"></select>
+            <img id="preset-hangul-english-preview" class="preset-texture-preview" alt="">
+          </div>
           <label for="preset-hangul-korean" data-i18n="presets.koreanTexture">한글 텍스처</label>
-          <select id="preset-hangul-korean"></select>
+          <div class="preset-texture-row">
+            <select id="preset-hangul-korean"></select>
+            <img id="preset-hangul-korean-preview" class="preset-texture-preview" alt="">
+          </div>
         </div>
+        <a class="preset-generator-link" href="../generate_declaration.py" target="_blank" rel="noopener" data-i18n="presets.generator">임의 크기의 한글/ASCII 선언 생성하기: generate_declaration.py</a>
         <div class="row">
           <button id="preset-load" class="primary" type="button" data-i18n="presets.load">프리셋 열기</button>
           <span id="preset-report" class="muted"></span>

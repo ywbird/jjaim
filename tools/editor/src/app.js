@@ -107,6 +107,7 @@ const els = {
   themeToggle: $("#theme-toggle"),
   fileMenuButton: $("#file-menu-button"),
   fileMenu: $("#file-menu"),
+  newProject: $("#new-project"),
   openDeclaration: $("#open-declaration"),
   emptyOpenDeclaration: $("#empty-open-declaration"),
   emptyOpenPresets: $("#empty-open-presets"),
@@ -120,6 +121,9 @@ const els = {
   presetAsciiFont: $("#preset-ascii-font"),
   presetHangulEnglish: $("#preset-hangul-english"),
   presetHangulKorean: $("#preset-hangul-korean"),
+  presetAsciiPreview: $("#preset-ascii-preview"),
+  presetHangulEnglishPreview: $("#preset-hangul-english-preview"),
+  presetHangulKoreanPreview: $("#preset-hangul-korean-preview"),
   presetLoad: $("#preset-load"),
   openProject: $("#open-project"),
   projectFile: $("#project-file"),
@@ -502,6 +506,70 @@ function adoptWorkspace(workspace, { restored = false } = {}) {
   persist("open");
 }
 
+function resetToEmptyState() {
+  if (state.storage.lock) state.storage.lock.release();
+  state.workspace = null;
+  state.renderer = null;
+  state.selected = null;
+  state.context = null;
+  state.selection = null;
+  state.draft = null;
+  state.drag = null;
+  state.keyMove = null;
+  state.historyPreview = null;
+  state.font = null;
+  state.shadow = { visible: false, size: 16, x: 0, y: 0, opacity: 0.25 };
+  state.view = defaultView({});
+  state.presetKind = "ascii";
+  state.storage.lock = null;
+  state.storage.temp = false;
+  state.storage.blocked = false;
+  state.storage.readOnly = false;
+  els.workspaceName.textContent = "";
+  els.editor.hidden = true;
+  els.emptyState.hidden = false;
+  els.fileMenu.hidden = true;
+  els.setSelect.replaceChildren();
+  els.setSummary.textContent = t("nav.openPrompt");
+  els.characterSearch.value = "";
+  els.groupSearch.value = "";
+  els.globalSearch.value = "";
+  els.globalError.textContent = "";
+  els.pageInput.value = "1";
+  els.pageCount.textContent = "/ 1";
+  els.characterGrid.replaceChildren(el("div", { class: "muted", text: t("nav.emptySet") }));
+  els.groupList.replaceChildren();
+  els.groupDetail.textContent = t("group.none");
+  els.groupDetail.className = "muted";
+  els.groupIndexControls.hidden = true;
+  els.childInfo.replaceChildren();
+  els.textureInfo.replaceChildren();
+  els.childStrip.replaceChildren();
+  els.groupGlyphSection.hidden = true;
+  els.groupGlyphGrid.replaceChildren();
+  els.groupGlyphPager.hidden = true;
+  els.structuralUsage.replaceChildren(el("div", { class: "muted", text: t("group.none") }));
+  els.toolStatus.textContent = t("status.groupRequired");
+  els.selectionStatus.textContent = t("status.selectionNone");
+  els.contextLabel.textContent = t("context.none");
+  els.textStatus.textContent = "";
+  for (const canvas of [els.board, els.context, els.textPreview]) {
+    canvas.width = 1;
+    canvas.height = 1;
+    canvas.getContext("2d").clearRect(0, 0, 1, 1);
+  }
+  els.textPreviewOpen.disabled = true;
+  els.exportSingle.disabled = true;
+  els.exportChanged.disabled = true;
+  els.exportAll.disabled = true;
+  els.exportProject.disabled = true;
+  els.undo.disabled = true;
+  els.redo.disabled = true;
+  updateFontUi();
+  updateToolAvailability();
+  setStatus(t("status.unchanged"), "");
+}
+
 async function restoreLastWorkspace() {
   if (state.workspace) return;
   try {
@@ -595,10 +663,25 @@ function populatePresetSelect(select, list) {
   select.value = list[0][0];
 }
 
+function updatePresetPreview(image, select) {
+  const file = select.value;
+  if (!file || image.dataset.file === file) return;
+  image.dataset.file = file;
+  image.src = `presets/fonts/${file}`;
+  image.alt = select.selectedOptions[0]?.textContent ?? file;
+}
+
+function updatePresetPreviews() {
+  updatePresetPreview(els.presetAsciiPreview, els.presetAsciiFont);
+  updatePresetPreview(els.presetHangulEnglishPreview, els.presetHangulEnglish);
+  updatePresetPreview(els.presetHangulKoreanPreview, els.presetHangulKorean);
+}
+
 function initPresetOptions() {
   populatePresetSelect(els.presetAsciiFont, ASCII_TEXTURES);
   populatePresetSelect(els.presetHangulEnglish, ASCII_TEXTURES);
   populatePresetSelect(els.presetHangulKorean, HANGUL_TEXTURES);
+  updatePresetPreviews();
 }
 
 function setPresetKind(kind) {
@@ -612,6 +695,7 @@ function setPresetKind(kind) {
   els.presetAsciiFields.hidden = kind !== "ascii";
   els.presetHangulFields.hidden = kind !== "hangul";
   els.presetMeta.textContent = t(kind === "ascii" ? "presets.asciiMeta" : "presets.hangulMeta");
+  updatePresetPreviews();
 }
 
 function showPresetDialog() {
@@ -2387,6 +2471,7 @@ function bindEvents() {
     renderGroupInfo();
     persist("view");
   });
+  els.newProject.addEventListener("click", () => resetToEmptyState());
   els.openDeclaration.addEventListener("click", () => {
     els.fileMenu.hidden = true;
     els.declarationFile.click();
@@ -2399,6 +2484,9 @@ function bindEvents() {
   els.presetClose.addEventListener("click", () => els.presetDialog.close());
   for (const button of document.querySelectorAll("[data-preset-kind]")) {
     button.addEventListener("click", () => setPresetKind(button.dataset.presetKind));
+  }
+  for (const select of [els.presetAsciiFont, els.presetHangulEnglish, els.presetHangulKorean]) {
+    select.addEventListener("change", updatePresetPreviews);
   }
   els.presetLoad.addEventListener("click", openPreset);
   els.emptyOpenDeclaration.addEventListener("click", () => els.declarationFile.click());
