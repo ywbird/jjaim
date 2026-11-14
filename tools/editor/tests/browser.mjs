@@ -377,6 +377,51 @@ try {
     }), "U+XXXX shadow input must render");
     await page.evaluate(() => window.__editor.selectGlyph("chars", 0, { codepoint: 0x41 }));
 
+    await page.$eval("#shadow-text", (input) => {
+      input.value = "";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await page.waitForFunction(() => window.__editor.state.view.shadowText === "");
+    await page.evaluate(() => window.__editor.selectGlyph("spare", 0));
+    await page.waitForFunction(() => window.__editor.state.view.shadowLast === 0x41);
+    assert.equal(await page.evaluate(() => window.__editor.state.view.shadowSticky), false);
+    const stickyOffPixels = await page.$eval("#board-shadow", (canvas) => {
+      const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+      let count = 0;
+      for (let index = 3; index < data.length; index += 4) if (data[index] !== 0) count += 1;
+      return count;
+    });
+    assert.equal(stickyOffPixels, 0);
+    await page.click("#shadow-sticky");
+    await page.waitForFunction(() => window.__editor.state.view.shadowSticky === true);
+    assert.ok(await page.$eval("#board-shadow", (canvas) => {
+      const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+      for (let index = 3; index < data.length; index += 4) if (data[index] !== 0) return true;
+      return false;
+    }), "sticky shadow must keep the previous Unicode on an unassigned child");
+    await page.type("#shadow-preset-name", "유지 프리셋");
+    await page.click("#save-shadow-preset");
+    assert.deepEqual(await page.evaluate(() => Object.keys(window.__editor.state.workspace.shadowPresets.at(-1)).sort()), ["name", "opacity", "size", "x", "y"]);
+    await page.click('[data-shadow-action="delete"]');
+    await page.waitForFunction(() => document.querySelector("#confirm-dialog").open);
+    await page.click("#confirm-ok");
+    await page.waitForFunction(() => document.querySelectorAll("#shadow-preset-list .shadow-preset-item").length === 0);
+    await page.click("#shadow-sticky");
+    await page.waitForFunction(() => window.__editor.state.view.shadowSticky === false);
+    assert.equal(await page.$eval("#board-shadow", (canvas) => {
+      const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+      for (let index = 3; index < data.length; index += 4) if (data[index] !== 0) return true;
+      return false;
+    }), false);
+    await page.click("#shadow-sticky");
+    await page.waitForFunction(() => window.__editor.state.view.shadowSticky === true);
+    await page.$eval("#shadow-text", (input) => {
+      input.value = "U+0042";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await page.waitForFunction(() => window.__editor.state.view.shadowText === "U+0042");
+    await page.evaluate(() => window.__editor.selectGlyph("chars", 0, { codepoint: 0x41 }));
+
     const shadowPixels = await page.$eval("#board", (canvas) => {
       const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
       let count = 0;
@@ -438,6 +483,8 @@ try {
   assert.equal(await page.evaluate(() => window.__editor.state.workspace.history.headId), head);
   assert.equal(await page.evaluate(() => window.__editor.state.view.shadowText), "U+0042");
   assert.equal(await page.$eval("#shadow-text", (node) => node.value), "U+0042");
+  assert.equal(await page.evaluate(() => window.__editor.state.view.shadowSticky), true);
+  assert.equal(await page.$eval("#shadow-sticky", (node) => node.checked), true);
   assert.equal(await page.$eval("#group-glyph-grid", (node) => node.hidden), true);
   await page.click("#toggle-group-grid");
   assert.equal(await page.$eval("#group-glyph-grid", (node) => node.hidden), false);

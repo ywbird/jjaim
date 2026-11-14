@@ -208,6 +208,7 @@ const els = {
   loadFont: $("#load-font"),
   shadowToggle: $("#shadow-toggle"),
   shadowText: $("#shadow-text"),
+  shadowSticky: $("#shadow-sticky"),
   fontStatus: $("#font-status"),
   shadowControls: $("#shadow-controls"),
   shadowSize: $("#shadow-size"),
@@ -404,7 +405,11 @@ function shadowCodepoint() {
     const cp = raw.codePointAt(0);
     if (cp != null && cp <= 0x10ffff) return cp;
   }
-  return currentCodepoint();
+  const current = currentCodepoint();
+  if (current != null) return current;
+  const last = state.view?.shadowLast;
+  if (state.view?.shadowSticky && Number.isInteger(last) && last >= 0 && last <= 0x10ffff) return last;
+  return null;
 }
 
 function ownInfo(group = currentGroup(), index = state.selected?.index) {
@@ -461,6 +466,8 @@ function defaultView(declaration) {
     text: DEFAULT_TEXT,
     textZoom: 4,
     shadowText: "",
+    shadowSticky: false,
+    shadowLast: null,
   };
 }
 
@@ -1006,6 +1013,8 @@ function selectGlyph(group, index, { codepoint = null } = {}) {
   cancelDraft();
   const model = state.workspace.declaration.groups.get(group);
   if (!model) return;
+  const previous = currentCodepoint();
+  if (previous != null) state.view.shadowLast = previous;
   const safeIndex = Math.max(0, Math.min(model.count - 1, Number(index) || 0));
   state.selected = { group, index: safeIndex };
   state.context = codepoint != null ? { codepoint, group, index: safeIndex } : null;
@@ -1759,6 +1768,7 @@ function refreshAll() {
   els.textInput.value = state.view.text ?? DEFAULT_TEXT;
   els.textZoom.value = String(state.view.textZoom ?? 1);
   els.shadowText.value = state.view.shadowText ?? "";
+  els.shadowSticky.checked = Boolean(state.view.shadowSticky);
   els.setSelect.value = state.set.id;
   els.mappedOnly.checked = state.set.mappedOnly;
   els.characterSearch.value = state.set.search ?? "";
@@ -2803,6 +2813,12 @@ function bindEvents() {
   els.shadowText.addEventListener("change", () => {
     state.view.shadowText = els.shadowText.value;
     updateFontUi();
+    drawBoard();
+    drawContext();
+    scheduleViewSave("font");
+  });
+  els.shadowSticky.addEventListener("change", () => {
+    state.view.shadowSticky = els.shadowSticky.checked;
     drawBoard();
     drawContext();
     scheduleViewSave("font");
