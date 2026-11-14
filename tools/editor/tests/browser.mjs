@@ -325,6 +325,34 @@ try {
     await page.waitForFunction(() => document.querySelectorAll("#shadow-preset-list .shadow-preset-item").length === 0);
     await page.click("#shadow-toggle");
     assert.equal(await page.evaluate(() => window.__editor.state.shadow.visible), true);
+    await page.$eval("#shadow-x", (input) => {
+      input.value = input.min;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await page.waitForFunction(() => window.__editor.state.shadow.x < 0);
+    const shadowOutside = await page.evaluate(() => {
+      const canvas = document.querySelector("#board-shadow");
+      const board = document.querySelector("#board");
+      const wrap = document.querySelector("#board-wrap");
+      const wrapRect = wrap.getBoundingClientRect();
+      const boardRect = board.getBoundingClientRect();
+      const scaleX = canvas.width / Math.max(1, wrap.scrollWidth);
+      const scaleY = canvas.height / Math.max(1, wrap.scrollHeight);
+      const left = (boardRect.left - wrapRect.left + wrap.scrollLeft) * scaleX;
+      const top = (boardRect.top - wrapRect.top + wrap.scrollTop) * scaleY;
+      const right = left + boardRect.width * scaleX;
+      const bottom = top + boardRect.height * scaleY;
+      const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+      let outside = 0;
+      for (let y = 0; y < canvas.height; y += 1) {
+        for (let x = 0; x < canvas.width; x += 1) {
+          if (x >= left - 1 && x <= right + 1 && y >= top - 1 && y <= bottom + 1) continue;
+          if (data[(y * canvas.width + x) * 4 + 3] !== 0) outside += 1;
+        }
+      }
+      return outside;
+    });
+    assert.ok(shadowOutside > 0, "font shadow must paint outside the glyph box");
     const shadowPixels = await page.$eval("#board", (canvas) => {
       const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
       let count = 0;

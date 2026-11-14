@@ -181,6 +181,7 @@ const els = {
   toolStatus: $("#tool-status"),
   editingBadge: $("#editing-badge"),
   board: $("#board"),
+  boardShadow: $("#board-shadow"),
   boardWrap: $("#board-wrap"),
   ownHidden: $("#own-hidden"),
   childrenHidden: $("#children-hidden"),
@@ -1177,6 +1178,37 @@ function setEditingMode(mode) {
   els.editingBadge.textContent = t(`edit.${mode}`);
 }
 
+function drawBoardShadow() {
+  const wrap = els.boardWrap;
+  const width = Math.max(1, wrap.scrollWidth || wrap.clientWidth);
+  const height = Math.max(1, wrap.scrollHeight || wrap.clientHeight);
+  const dpr = globalThis.devicePixelRatio || 1;
+  els.boardShadow.width = Math.max(1, Math.round(width * dpr));
+  els.boardShadow.height = Math.max(1, Math.round(height * dpr));
+  els.boardShadow.style.width = `${width}px`;
+  els.boardShadow.style.height = `${height}px`;
+  const ctx = els.boardShadow.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  if (!state.font || !state.shadow.visible) return;
+  const cp = currentCodepoint();
+  if (cp == null || !state.font.hasCodepoint(cp)) return;
+  const settings = clampShadowSettings(state.shadow);
+  const boardRect = els.board.getBoundingClientRect();
+  const wrapRect = wrap.getBoundingClientRect();
+  const offsetX = boardRect.left - wrapRect.left + wrap.scrollLeft;
+  const offsetY = boardRect.top - wrapRect.top + wrap.scrollTop;
+  const zoom = Number(state.view.zoom);
+  ctx.save();
+  ctx.globalAlpha = settings.opacity;
+  ctx.fillStyle = document.documentElement.dataset.theme === "dark" ? "#fff" : "#000";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.font = `${settings.size * zoom}px "${state.font.family}"`;
+  ctx.fillText(String.fromCodePoint(cp), offsetX + settings.x * zoom, offsetY + settings.y * zoom);
+  ctx.restore();
+}
+
 function drawBoard() {
   const group = currentGroup();
   if (!group || !state.selected) {
@@ -1188,6 +1220,7 @@ function drawBoard() {
     ctx.clearRect(0, 0, 1, 1);
     setEditingMode("none");
     els.contextLabel.textContent = t("context.none");
+    drawBoardShadow();
     return;
   }
   const index = state.selected.index;
@@ -1236,9 +1269,9 @@ function drawBoard() {
     ctx.drawImage(imageCanvas({ width: state.currentOnion.width, height: state.currentOnion.height, data: tinted }), 0, 0, els.board.width, els.board.height);
     ctx.restore();
   }
-  drawShadow(ctx, zoom, currentGlyphTarget());
   drawGrid(ctx, display, zoom);
   drawSelection(ctx, zoom);
+  drawBoardShadow();
   if (counts) {
     els.diffCounts.textContent = t("history.diffCounts", counts);
   } else if (state.view.diff) els.diffCounts.textContent = t("compare.noBase");
@@ -2836,6 +2869,7 @@ function bindEvents() {
     if (event.code === "Space") state.space = false;
   });
   window.addEventListener("blur", () => { state.space = false; });
+  window.addEventListener("resize", () => { if (state.workspace) drawBoard(); });
   window.addEventListener("pagehide", () => state.storage.lock?.release());
 }
 

@@ -336,6 +336,7 @@ button.icon-btn.labeled { width: auto; padding: 0 8px; gap: 5px; }
 .check { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; cursor: pointer; }
 
 #board-wrap {
+  position: relative;
   flex: 1;
   overflow: auto;
   display: flex;
@@ -351,7 +352,18 @@ button.icon-btn.labeled { width: auto; padding: 0 8px; gap: 5px; }
   background-position: 0 0, 0 8px, 8px -8px, -8px 0;
 }
 
+#board-shadow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
 #board {
+  position: relative;
+  z-index: 1;
   flex: 0 0 auto;
   border: 1px solid var(--border-strong);
   background: transparent;
