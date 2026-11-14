@@ -10,6 +10,9 @@
 
 ## 피드백
 
+- [x] 텍스쳐 움직이기: 모든 텍스쳐를 x,y로 일정 크기만큼 움직이는 기능. 이미지를 수정하는거임. 섀도 프리셋 아래에 추가. — `adfc26e`, shift unit + confirm/all-asset browser test
+    -값 넣고, 이동 버튼 누르면 confirm하는 메세지 나와서 확인 받도록
+
 - [x] 섀도잉에 토글 옵션 (폰트 프리셋 저장에 비포함)을 추가해. 유니코드가 배정된 글리프에서 배정되지 않은 직계로 이동할때, 이전 섀도잉에 유니코드를 유지하는거야. — `db5ecba`, sticky off/on + preset exclusion browser test
     - 예를 들어 '가'에서 initial_0[0]으로 이동할때, 섀도잉이 '가'로 남아있는거지
 
