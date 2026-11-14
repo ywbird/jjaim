@@ -10,6 +10,9 @@
 
 ## 피드백
 
+- [x] 이전 작업 2개에서 생긴 ui 텍스트가 전부 제대로 안나와. menu.newProject 이런식으로. — `23e5051`, i18n fallback + no-raw-key browser test
+- [x] 임의 크기의 한글/ascii 선언 생성하기 말고, 그냥 크기 직접 정하기 같은 버튼으로 generate_declaration.py 로직을 가져와서 한글/ascii 임의 크기 선언을 생성해. — `23e5051`, 5x11 custom-size browser test
+
 - [x] 프리셋 열때 한글/영문 텍스쳐 미리보기 — `e0f7c9e`, preview image + generator link browser test
     - "임의 크기의 한글/ascii 선언 생성하기: generate_declaration.py" 하고 생성 스크립트를 링크
 - [x] 열기 메뉴에 새 프로젝트 버튼으로 선언이랑 모든 텍스쳐를 비운 새 작업을 생성하는 옵션 — `e0f7c9e`, empty-state reset browser test
