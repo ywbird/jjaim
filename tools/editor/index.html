@@ -367,6 +367,14 @@
           <button class="preset-kind" type="button" data-preset-kind="hangul" aria-pressed="false" data-i18n="presets.hangul">한글 + ASCII</button>
         </div>
         <p id="preset-meta" class="muted"></p>
+        <button id="preset-custom-toggle" class="small" type="button">크기 직접 정하기</button>
+        <div id="preset-custom-fields" class="preset-fields" hidden>
+          <label for="preset-width" data-i18n="presets.cellWidth">ASCII 셀 너비</label>
+          <input id="preset-width" type="number" min="1" max="1024" step="1" value="8">
+          <label for="preset-height" data-i18n="presets.cellHeight">셀 높이</label>
+          <input id="preset-height" type="number" min="1" max="1024" step="1" value="16">
+          <p class="muted" data-i18n="presets.sizeHint">한글 그룹은 ASCII 셀 너비의 2배를 사용합니다.</p>
+        </div>
         <div id="preset-ascii-fields" class="preset-fields">
           <label for="preset-ascii-font" data-i18n="presets.englishTexture">영문 텍스처</label>
           <div class="preset-texture-row">
@@ -386,7 +394,6 @@
             <img id="preset-hangul-korean-preview" class="preset-texture-preview" alt="">
           </div>
         </div>
-        <a class="preset-generator-link" href="../generate_declaration.py" target="_blank" rel="noopener" data-i18n="presets.generator">임의 크기의 한글/ASCII 선언 생성하기: generate_declaration.py</a>
         <div class="row">
           <button id="preset-load" class="primary" type="button" data-i18n="presets.load">프리셋 열기</button>
           <span id="preset-report" class="muted"></span>

@@ -22,7 +22,13 @@ const STRINGS = {
     "presets.englishTexture": "영문 텍스처",
     "presets.koreanTexture": "한글 텍스처",
     "presets.load": "프리셋 열기",
-    "presets.generator": "임의 크기의 한글/ASCII 선언 생성하기: generate_declaration.py",
+    "presets.customSize": "크기 직접 정하기",
+    "presets.standardSize": "프리셋 크기로 돌아가기",
+    "presets.generate": "선언 생성",
+    "presets.cellWidth": "ASCII 셀 너비",
+    "presets.cellHeight": "셀 높이",
+    "presets.sizeHint": "한글 그룹은 ASCII 셀 너비의 2배를 사용합니다.",
+    "presets.invalidSize": "너비와 높이는 1..1024 정수여야 합니다",
     "presets.loading": "불러오는 중…",
     "presets.failed": "프리셋을 열지 못했습니다: {message}",
     "presets.incomplete": "텍스처가 일부만 연결되었습니다",
@@ -288,7 +294,13 @@ const STRINGS = {
     "presets.englishTexture": "English texture",
     "presets.koreanTexture": "Korean texture",
     "presets.load": "Open preset",
-    "presets.generator": "Generate declarations at any size: generate_declaration.py",
+    "presets.customSize": "Set custom size",
+    "presets.standardSize": "Use preset size",
+    "presets.generate": "Generate declaration",
+    "presets.cellWidth": "ASCII cell width",
+    "presets.cellHeight": "Cell height",
+    "presets.sizeHint": "Hangul groups use twice the ASCII cell width.",
+    "presets.invalidSize": "Width and height must be integers from 1 to 1024",
     "presets.loading": "Loading…",
     "presets.failed": "Could not open the preset: {message}",
     "presets.incomplete": "Only some textures were connected",
@@ -553,10 +565,17 @@ export function t(key, params = {}) {
 export function applyStatic(root = document) {
   document.documentElement.lang = language;
   document.title = t("app.title");
-  for (const element of root.querySelectorAll("[data-i18n]")) element.textContent = t(element.dataset.i18n);
-  for (const element of root.querySelectorAll("[data-i18n-placeholder]")) element.placeholder = t(element.dataset.i18nPlaceholder);
+  for (const element of root.querySelectorAll("[data-i18n]")) {
+    const text = t(element.dataset.i18n);
+    if (text !== element.dataset.i18n) element.textContent = text;
+  }
+  for (const element of root.querySelectorAll("[data-i18n-placeholder]")) {
+    const text = t(element.dataset.i18nPlaceholder);
+    if (text !== element.dataset.i18nPlaceholder) element.placeholder = text;
+  }
   for (const element of root.querySelectorAll("[data-i18n-title]")) {
     const text = t(element.dataset.i18nTitle);
+    if (text === element.dataset.i18nTitle) continue;
     element.title = text;
     element.setAttribute("aria-label", text);
   }

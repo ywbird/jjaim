@@ -82,6 +82,7 @@ const state = {
   space: false,
   antialias: true,
   presetKind: "ascii",
+  presetCustom: false,
   storage: { reading: false, blocked: false, temp: false, readOnly: false, lock: null },
   saveQueue: Promise.resolve(),
   saveToken: 0,
@@ -116,6 +117,10 @@ const els = {
   presetClose: $("#preset-close"),
   presetReport: $("#preset-report"),
   presetMeta: $("#preset-meta"),
+  presetCustomToggle: $("#preset-custom-toggle"),
+  presetCustomFields: $("#preset-custom-fields"),
+  presetWidth: $("#preset-width"),
+  presetHeight: $("#preset-height"),
   presetAsciiFields: $("#preset-ascii-fields"),
   presetHangulFields: $("#preset-hangul-fields"),
   presetAsciiFont: $("#preset-ascii-font"),
@@ -308,6 +313,10 @@ function setStatus(text, kind = "") {
 function applyLanguage() {
   applyStatic();
   els.settingsLanguage.value = getLanguage();
+  if (els.presetDialog.open) {
+    setPresetKind(state.presetKind);
+    setPresetCustom(state.presetCustom);
+  }
   if (!state.workspace) {
     renderSetSelect();
     els.characterGrid.replaceChildren(el("div", { class: "muted", text: t("nav.emptySet") }));
@@ -631,6 +640,24 @@ const ASCII_TEXTURES = [
   ["E8.png", "영문중태세모꼴"],
 ];
 
+const BASE_CELL_HEIGHT = 16;
+
+function generatePresetDeclaration(template, width, height) {
+  const declaration = JSON.parse(JSON.stringify(template));
+  if (declaration.metadata && typeof declaration.metadata.description === "string") {
+    declaration.metadata.description = declaration.metadata.description.replace(/8x16/g, `${width}x${height}`);
+  }
+  for (const group of Object.values(declaration.groups ?? {})) {
+    const texture = group.texture;
+    const isAscii = texture?.source === "ascii";
+    group.size = [isAscii ? width : 2 * width, height];
+    if (texture) {
+      texture.start = [texture.start[0], Math.floor(texture.start[1] / BASE_CELL_HEIGHT) * height];
+    }
+  }
+  return declaration;
+}
+
 const HANGUL_TEXTURES = [
   ["H01.png", "굵은달꼴"],
   ["H02.png", "가는달꼴"],
@@ -692,16 +719,25 @@ function setPresetKind(kind) {
     button.classList.toggle("active", active);
     button.setAttribute("aria-pressed", String(active));
   }
-  els.presetAsciiFields.hidden = kind !== "ascii";
-  els.presetHangulFields.hidden = kind !== "hangul";
+  els.presetAsciiFields.hidden = state.presetCustom || kind !== "ascii";
+  els.presetHangulFields.hidden = state.presetCustom || kind !== "hangul";
   els.presetMeta.textContent = t(kind === "ascii" ? "presets.asciiMeta" : "presets.hangulMeta");
-  updatePresetPreviews();
+  if (!state.presetCustom) updatePresetPreviews();
+}
+
+function setPresetCustom(active) {
+  state.presetCustom = Boolean(active);
+  els.presetCustomFields.hidden = !state.presetCustom;
+  els.presetCustomToggle.textContent = t(state.presetCustom ? "presets.standardSize" : "presets.customSize");
+  els.presetLoad.textContent = t(state.presetCustom ? "presets.generate" : "presets.load");
+  setPresetKind(state.presetKind);
 }
 
 function showPresetDialog() {
   els.presetReport.className = "muted";
   els.presetReport.textContent = "";
   setPresetKind(state.presetKind);
+  setPresetCustom(state.presetCustom);
   els.presetDialog.showModal();
 }
 
@@ -709,6 +745,9 @@ async function openPreset() {
   const kind = state.presetKind;
   const preset = PRESETS[kind];
   if (!preset) return;
+  const custom = state.presetCustom;
+  const width = Number(els.presetWidth.value);
+  const height = Number(els.presetHeight.value);
   const english = kind === "ascii" ? els.presetAsciiFont.value : els.presetHangulEnglish.value;
   const korean = els.presetHangulKorean.value;
   const textures = kind === "ascii"
@@ -719,6 +758,9 @@ async function openPreset() {
       ];
   const controls = [
     ...document.querySelectorAll("[data-preset-kind]"),
+    els.presetCustomToggle,
+    els.presetWidth,
+    els.presetHeight,
     els.presetAsciiFont,
     els.presetHangulEnglish,
     els.presetHangulKorean,
@@ -729,17 +771,29 @@ async function openPreset() {
   els.presetReport.textContent = t("presets.loading");
   const previous = { selected: state.selected, context: state.context };
   try {
-    const text = await (await fetchPresetFile(preset.declaration)).text();
-    const declaration = parseDeclaration(text, { fileName: preset.fileName });
-    const workspace = newWorkspace(declaration, text, preset.fileName);
-    const files = [];
-    for (const texture of textures) {
-      const buffer = await (await fetchPresetFile(texture.source)).arrayBuffer();
-      files.push(new File([buffer], texture.target, { type: "image/png" }));
+    if (custom && (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 1024 || height > 1024)) {
+      throw new Error(t("presets.invalidSize"));
     }
-    const result = await importImages(declaration, workspace.assets, files);
-    if (result.errors.length) throw new Error(result.errors.join(" / "));
-    if (result.linked.length !== files.length) throw new Error(t("presets.incomplete"));
+    const templateText = await (await fetchPresetFile(preset.declaration)).text();
+    let text = templateText;
+    let fileName = preset.fileName;
+    if (custom) {
+      const generated = generatePresetDeclaration(JSON.parse(templateText), width, height);
+      text = `${JSON.stringify(generated, null, 2)}\n`;
+      fileName = `${kind}-${width}x${height}.json`;
+    }
+    const declaration = parseDeclaration(text, { fileName });
+    const workspace = newWorkspace(declaration, text, fileName);
+    if (!custom) {
+      const files = [];
+      for (const texture of textures) {
+        const buffer = await (await fetchPresetFile(texture.source)).arrayBuffer();
+        files.push(new File([buffer], texture.target, { type: "image/png" }));
+      }
+      const result = await importImages(declaration, workspace.assets, files);
+      if (result.errors.length) throw new Error(result.errors.join(" / "));
+      if (result.linked.length !== files.length) throw new Error(t("presets.incomplete"));
+    }
     if (state.storage.lock) state.storage.lock.release();
     state.workspace = workspace;
     els.presetDialog.close();
@@ -2488,6 +2542,7 @@ function bindEvents() {
   for (const select of [els.presetAsciiFont, els.presetHangulEnglish, els.presetHangulKorean]) {
     select.addEventListener("change", updatePresetPreviews);
   }
+  els.presetCustomToggle.addEventListener("click", () => setPresetCustom(!state.presetCustom));
   els.presetLoad.addEventListener("click", openPreset);
   els.emptyOpenDeclaration.addEventListener("click", () => els.declarationFile.click());
   els.declarationFile.addEventListener("change", async () => {

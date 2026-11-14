@@ -130,6 +130,7 @@ try {
   await client.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: downloadDir });
   await page.goto(base, { waitUntil: "networkidle0" });
   assert.equal(await page.title(), "JJaim 텍스쳐 편집기");
+  assert.deepEqual(await page.$$eval("[data-i18n]", (nodes) => nodes.filter((node) => node.textContent === node.dataset.i18n).map((node) => node.dataset.i18n)), []);
   assert.equal(await page.$eval('script[src="src/app.js"]', (node, prefix) => node.src.startsWith(prefix), base), true);
   await page.waitForSelector("#empty-state", { visible: true });
   assert.equal(await page.$eval("#editor", (node) => node.hidden), true);
@@ -533,7 +534,7 @@ try {
   assert.equal(await presetPage.$$eval("[data-preset-kind]", (nodes) => nodes.length), 2);
   assert.equal(await presetPage.$eval("#preset-ascii-preview", (image) => image.getAttribute("src")), "presets/fonts/E1.png");
   await presetPage.waitForFunction(() => document.querySelector("#preset-ascii-preview").naturalWidth > 0);
-  assert.equal(await presetPage.$eval(".preset-generator-link", (link) => link.getAttribute("href")), "../generate_declaration.py");
+  assert.equal(await presetPage.$eval("#preset-custom-toggle", (node) => node.textContent), "크기 직접 정하기");
   await presetPage.select("#preset-ascii-font", "E2.png");
   await presetPage.waitForFunction(() => document.querySelector("#preset-ascii-preview").dataset.file === "E2.png");
   await presetPage.click("#preset-load");
@@ -602,6 +603,38 @@ try {
   await presetPage.click("#empty-open-works");
   await presetPage.waitForFunction(() => document.querySelectorAll("#works-list .list-item").length > 0);
   await presetPage.click("#works-close");
+
+  await presetPage.click("#file-menu-button");
+  await presetPage.click("#open-presets");
+  await presetPage.click("#preset-custom-toggle");
+  await presetPage.$eval("#preset-width", (node) => { node.value = "5"; });
+  await presetPage.$eval("#preset-height", (node) => { node.value = "11"; });
+  await presetPage.click("#preset-load");
+  await presetPage.waitForFunction(() => window.__editor.state.workspace?.fileName === "ascii-5x11.json");
+  const customAscii = await presetPage.evaluate(() => {
+    const workspace = window.__editor.state.workspace;
+    return {
+      size: [workspace.declaration.groups.get("ascii_20").width, workspace.declaration.groups.get("ascii_20").height],
+      start: workspace.declaration.groups.get("ascii_20").texture.start,
+      assets: workspace.assets.paths().length,
+    };
+  });
+  assert.deepEqual(customAscii, { size: [5, 11], start: [0, 22], assets: 0 });
+
+  await presetPage.click("#file-menu-button");
+  await presetPage.click("#open-presets");
+  await presetPage.click('[data-preset-kind="hangul"]');
+  await presetPage.click("#preset-load");
+  await presetPage.waitForFunction(() => window.__editor.state.workspace?.fileName === "hangul-5x11.json");
+  const customHangul = await presetPage.evaluate(() => {
+    const workspace = window.__editor.state.workspace;
+    return {
+      ascii: [workspace.declaration.groups.get("ascii_20").width, workspace.declaration.groups.get("ascii_20").height],
+      hangul: [workspace.declaration.groups.get("hangul_syllables").width, workspace.declaration.groups.get("hangul_syllables").height],
+      assets: workspace.assets.paths().length,
+    };
+  });
+  assert.deepEqual(customHangul, { ascii: [5, 11], hangul: [10, 11], assets: 0 });
   assert.deepEqual(presetErrors, []);
   await presetPage.close();
 
