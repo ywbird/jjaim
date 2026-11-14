@@ -131,6 +131,22 @@ uv run pytest
 
 `list`와 `groups`는 선언만 조사합니다. `text`와 `sheet`는 실제 PNG가 필요합니다. 전체 옵션은 [검사기 사용법](tools/inspector/README.md)에 있습니다.
 
+### 선언 생성기
+
+[`tools/generate_declaration.py`](tools/generate_declaration.py)는 예제 선언을 기준으로 ASCII 셀 `w×h`에 맞는 JSON 선언을 생성합니다. Python 표준 라이브러리만 사용하며 이미지나 텍스처는 만들지 않습니다.
+
+```sh
+# ASCII 95자: 모든 ASCII 그룹 w×h, 텍스처 행 2*h~7*h
+python3 tools/generate_declaration.py --ascii 8 16
+
+# 한글 11,172자 + ASCII 95자: 한글 부품·음절 2w×h, ASCII w×h
+python3 tools/generate_declaration.py --hangul 8 16 -o hangul.json
+```
+
+`w`와 `h`는 양의 정수여야 합니다. `--ascii`는 ASCII 그룹 6개를 16열로 유지하고 텍스처 시작 행을 `2*h`부터 `7*h`까지 배치합니다. `--hangul`은 ASCII 그룹을 `w×h`로 두고, 한글 부품 아틀라스를 27열 16행으로 유지하면서 시작 행을 `0`부터 `15*h`까지 배치합니다. 초성·중성·종성 344개 부품으로 11,172음절을 구성하는 기존 임포트·반복·유니코드 매핑은 그대로 보존되며, ASCII 95자를 포함해 총 11,267자를 매핑합니다. 기본 출력은 표준 출력의 UTF-8 JSON이고 `-o`/`--output`으로 파일에 쓸 수 있습니다. 선언만 생성하며 PNG 생성·축소·편집은 하지 않고, 텍스처 경로는 기본적으로 `ascii.png`와 `hangul.png`입니다.
+
+테스트: 저장소 루트에서 `python3 -m unittest discover -s tools/tests -v`.
+
 <details>
 <summary>원본 BIN을 PNG로 변환하기</summary>
 
@@ -154,6 +170,7 @@ uv run python ../font_bin_to_png.py ../../examples/ascii.bin
 | [`tools/editor/`](tools/editor/) | 텍스처 픽셀 편집기 · [사용법](tools/editor/README.md) / [도구 명세](tools/editor/SPEC.md) |
 | [`tools/declaration-editor/`](tools/declaration-editor/) | 그룹 선언 편집기 · [사용법](tools/declaration-editor/README.md) |
 | [`tools/inspector/`](tools/inspector/) | 선언 검증·조회·PNG 미리보기 CLI · [사용법](tools/inspector/README.md) / [도구 명세](tools/inspector/SPEC.md) |
+| [`tools/generate_declaration.py`](tools/generate_declaration.py) | ASCII·한글+ASCII 선언 JSON 생성기 · [사용법](#선언-생성기) |
 | [`docs/`](docs/) | 해설 자산·테스트·8×4×4벌 참고 문서. `SPEC.md.bak`는 이전 명세 백업 |
 
 <details>
