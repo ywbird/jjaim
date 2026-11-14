@@ -207,6 +207,7 @@ const els = {
   onionOpacity: $("#onion-opacity"),
   loadFont: $("#load-font"),
   shadowToggle: $("#shadow-toggle"),
+  shadowText: $("#shadow-text"),
   fontStatus: $("#font-status"),
   shadowControls: $("#shadow-controls"),
   shadowSize: $("#shadow-size"),
@@ -392,6 +393,20 @@ function currentCodepoint() {
   return aliases[0] ?? null;
 }
 
+function shadowCodepoint() {
+  const raw = String(state.view?.shadowText ?? "").trim();
+  if (/^U\+/i.test(raw)) {
+    const match = /^U\+([0-9a-f]{1,6})$/i.exec(raw);
+    const cp = match ? parseInt(match[1], 16) : NaN;
+    return cp <= 0x10ffff ? cp : currentCodepoint();
+  }
+  if (raw) {
+    const cp = raw.codePointAt(0);
+    if (cp != null && cp <= 0x10ffff) return cp;
+  }
+  return currentCodepoint();
+}
+
 function ownInfo(group = currentGroup(), index = state.selected?.index) {
   if (!group || index == null) return null;
   if (!group.texture) return { ok: false, reason: t("status.noTexture") };
@@ -445,6 +460,7 @@ function defaultView(declaration) {
     onionOpacity: 0.25,
     text: DEFAULT_TEXT,
     textZoom: 4,
+    shadowText: "",
   };
 }
 
@@ -1191,7 +1207,7 @@ function drawBoardShadow() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, width, height);
   if (!state.font || !state.shadow.visible) return;
-  const cp = currentCodepoint();
+  const cp = shadowCodepoint();
   if (cp == null || !state.font.hasCodepoint(cp)) return;
   const settings = clampShadowSettings(state.shadow);
   const boardRect = els.board.getBoundingClientRect();
@@ -1343,7 +1359,7 @@ function drawContext() {
 
 function drawShadow(ctx, zoom, target) {
   if (!state.font || !state.shadow.visible) return;
-  const cp = currentCodepoint();
+  const cp = shadowCodepoint();
   if (cp == null) {
     els.fontStatus.textContent = t("status.fontNoContext");
     return;
@@ -1742,6 +1758,7 @@ function refreshAll() {
   els.onionOpacity.value = String(state.view.onionOpacity);
   els.textInput.value = state.view.text ?? DEFAULT_TEXT;
   els.textZoom.value = String(state.view.textZoom ?? 1);
+  els.shadowText.value = state.view.shadowText ?? "";
   els.setSelect.value = state.set.id;
   els.mappedOnly.checked = state.set.mappedOnly;
   els.characterSearch.value = state.set.search ?? "";
@@ -1773,7 +1790,7 @@ function shadowSliderRange() {
   const height = group?.height ?? 16;
   const size = Math.min(256, Math.max(0.25, Number(state.shadow.size) || 16));
   let fontWidth = size;
-  const cp = currentCodepoint();
+  const cp = shadowCodepoint();
   if (state.font && cp != null && state.font.hasCodepoint(cp)) {
     const ctx = document.createElement("canvas").getContext("2d");
     ctx.font = `${size}px "${state.font.family}"`;
@@ -2776,6 +2793,19 @@ function bindEvents() {
     drawBoard();
     drawContext();
     persist("font");
+  });
+  els.shadowText.addEventListener("input", () => {
+    state.view.shadowText = els.shadowText.value;
+    drawBoard();
+    drawContext();
+    scheduleViewSave("font");
+  });
+  els.shadowText.addEventListener("change", () => {
+    state.view.shadowText = els.shadowText.value;
+    updateFontUi();
+    drawBoard();
+    drawContext();
+    scheduleViewSave("font");
   });
 
   els.exportSingle.addEventListener("click", () => { els.fileMenu.hidden = true; doExportSingle(); });

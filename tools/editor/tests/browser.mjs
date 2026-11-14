@@ -353,6 +353,30 @@ try {
       return outside;
     });
     assert.ok(shadowOutside > 0, "font shadow must paint outside the glyph box");
+
+    await page.evaluate(() => window.__editor.selectGlyph("spare", 0));
+    assert.equal(await page.evaluate(() => window.__editor.state.context), null);
+    await page.type("#shadow-text", "B");
+    await page.waitForFunction(() => window.__editor.state.view.shadowText === "B");
+    const typedShadowPixels = await page.$eval("#board-shadow", (canvas) => {
+      const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+      let count = 0;
+      for (let index = 3; index < data.length; index += 4) if (data[index] !== 0) count += 1;
+      return count;
+    });
+    assert.ok(typedShadowPixels > 0, "typed shadow character must render without a Unicode context");
+    await page.$eval("#shadow-text", (input) => {
+      input.value = "U+0042";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await page.waitForFunction(() => window.__editor.state.view.shadowText === "U+0042");
+    assert.ok(await page.$eval("#board-shadow", (canvas) => {
+      const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+      for (let index = 3; index < data.length; index += 4) if (data[index] !== 0) return true;
+      return false;
+    }), "U+XXXX shadow input must render");
+    await page.evaluate(() => window.__editor.selectGlyph("chars", 0, { codepoint: 0x41 }));
+
     const shadowPixels = await page.$eval("#board", (canvas) => {
       const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
       let count = 0;
@@ -412,6 +436,8 @@ try {
   await page.reload({ waitUntil: "networkidle0" });
   await page.waitForFunction(() => window.__editor?.state.workspace?.fileName === "browser.json");
   assert.equal(await page.evaluate(() => window.__editor.state.workspace.history.headId), head);
+  assert.equal(await page.evaluate(() => window.__editor.state.view.shadowText), "U+0042");
+  assert.equal(await page.$eval("#shadow-text", (node) => node.value), "U+0042");
   assert.equal(await page.$eval("#group-glyph-grid", (node) => node.hidden), true);
   await page.click("#toggle-group-grid");
   assert.equal(await page.$eval("#group-glyph-grid", (node) => node.hidden), false);
